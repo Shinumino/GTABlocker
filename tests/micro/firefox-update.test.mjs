@@ -66,13 +66,15 @@ test('a finished or failed update, or none at all, is not waiting', () => {
 
 test('the harness refuses to start Firefox while an update is waiting, and leaves no profile', async () => {
   const { dir, roots } = fakeRoots([['programdata', 'pending']]);
-  const before = new Set(fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith('gtablocker-ff-')));
+  // A folder of this test's own for the profile: another test file may make and remove
+  // profiles in %TEMP% at the same moment (that race failed this test once in 12 runs).
+  const profileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gtab-profiles-'));
   try {
-    await assert.rejects(startFirefox({ firefoxBin: NO_FIREFOX, updateRoots: roots }), /update is waiting/);
-    const after = fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith('gtablocker-ff-') && !before.has(n));
-    assert.deepEqual(after, []);
+    await assert.rejects(startFirefox({ firefoxBin: NO_FIREFOX, updateRoots: roots, profileRoot }), /update is waiting/);
+    assert.deepEqual(fs.readdirSync(profileRoot), []);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(profileRoot, { recursive: true, force: true });
   }
 });
 

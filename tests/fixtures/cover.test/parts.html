@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Parts of a page (test fixture)</title>
+<!-- Content the general rules must reach: a shadow tree and a frame (step 3). -->
+<style> body { margin: 0; font: 14px/20px sans-serif; } fan-post { display: block; height: 80px; margin: 8px; } iframe { width: 600px; height: 200px; border: 0; } </style>
+</head>
+<body>
+<fan-post id="post-gta"></fan-post>
+<fan-post id="post-dog"></fan-post>
+<iframe id="frame" src="framed.html"></iframe>
+<script>
+  customElements.define('fan-post', class extends HTMLElement {
+    connectedCallback() {
+      const root = this.attachShadow({ mode: 'open' });
+      const text = this.id === 'post-gta' ? 'Leonida looks huge in the new trailer' : 'My dog is huge now';
+      root.innerHTML = `<div class="body"><p></p></div>`;
+      root.querySelector('p').textContent = text;
+    }
+  });
+</script>
+</body>
+</html>

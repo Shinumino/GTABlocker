@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tricky boxes (test fixture)</title>
+<script>
+  // The extension's marker as it is while the page is still being read: it must not say "ready"
+  // before the first look is done.
+  window.__markerWhileParsing = document.documentElement.getAttribute('data-gta-blocker');
+</script>
+<!-- Boxes that real sites build and the step 3 reviews found the first version got wrong. Each
+     GTA box has a twin with the same shape and no GTA, to compare sizes against. -->
+<style>
+  body { margin: 0; font: 14px/20px sans-serif; width: 1000px; }
+  .auto { padding: 8px; border: 1px solid #ccc; margin: 8px; }
+  /* A clearfix: the box's own ::after holds its height around a float. */
+  .clearfix::after { content: ""; display: table; clear: both; }
+  .float { float: left; width: 200px; height: 50px; }
+  /* A 16:9 box: the box's own ::before gives it its height. */
+  .ratio { position: relative; width: 320px; margin: 8px; }
+  .ratio::before { content: ""; display: block; padding-top: 56.25%; }
+  .ratio p { position: absolute; top: 0; margin: 0; }
+  .abs-wrap { position: relative; height: 120px; }
+  .abs { position: absolute; left: 10px; top: 10px; width: 300px; height: 80px; }
+  .sticky { position: sticky; top: 0; height: 40px; }
+  .tall { display: block; height: 150vh; }
+  /* Components usually give themselves display: block; an inline host cannot carry a cover. */
+  x-panel { display: block; }
+  /* A badge the site forces visible with !important and id strength. */
+  #forced-badge.badge { visibility: visible !important; position: absolute; right: 4px; top: 4px; }
+</style>
+</head>
+<body>
+<div class="card auto" id="auto-gta">A long review of GTA 6 that wraps onto a second line when the text goes on and on and on for a while yes it does. It keeps going well past the width of one line, so the box is two lines tall, and the cover has room for its two lines too.</div>
+<div class="card auto" id="auto-dog">A long review of dogs!! that wraps onto a second line when the text goes on and on and on for a while yes it does. It keeps going well past the width of one line, so the box is two lines tall, and the cover has room for its two lines too.</div>
+
+<div class="card clearfix" id="cf-gta"><div class="float">GTA 6</div></div>
+<div class="card clearfix" id="cf-dog"><div class="float">Dogs!</div></div>
+
+<div class="card ratio" id="ratio-gta"><p>Vice City</p></div>
+<div class="card ratio" id="ratio-dog"><p>Dog City</p></div>
+
+<a href="#wrapped-opened" id="wrap-link"><div class="card auto" id="wrapped-gta">Watch the GTA 6 trailer here<span class="badge" id="forced-badge">8:00</span></div></a>
+
+<div class="abs-wrap"><div class="card abs" id="abs-gta">GTA 6 news</div></div>
+<div class="card sticky" id="sticky-gta">Leonida tonight</div>
+
+<article class="tall" id="tall"><p id="tall-p">Grand Theft Auto VI, the long review</p></article>
+<div><p id="huge-p" style="height: 1000px; width: 760px; margin: 0;">Los Santos, a paragraph taller than the screen.</p></div>
+
+<div class="card auto" id="titled" title="GTA 6 leaks">A video with a tooltip</div>
+<div contenteditable="true" id="editor">I am typing about GTA 6 here</div>
+<div class="card auto" id="later" hidden>GTA 6, hidden at first</div>
+<nav id="nav"><a href="#home">Home</a><ul style="display: none"><li>GTA 6 menu item</li></ul></nav>
+<div id="glue">We met the vice<p>photo</p>city council</div>
+<div id="inline-join">Watching G<b>TA</b> 6 tonight</div>
+<h3 id="removal">Vice <span id="loading">loading</span> City</h3>
+<div class="card auto" id="retext">GTA 6 at first</div>
+<div class="card auto" id="shelf"><h4 id="shelf-head">GTA shelf</h4><div class="card auto" id="shelf-item">A dog video</div></div>
+
+<x-panel id="panel-open"></x-panel>
+<x-panel id="panel-closed"></x-panel>
+
+<script>
+  // Every event a cover must swallow, heard here by the page, the way a site listens.
+  window.__heard = [];
+  for (const type of ['click', 'auxclick', 'mousedown', 'mouseup', 'contextmenu', 'mouseover', 'pointerdown']) {
+    document.addEventListener(type, (e) => {
+      if (e.target.closest && e.target.closest('#wrap-link')) window.__heard.push(type);
+    }, true);
+  }
+  // A component that keeps its content in a shadow tree and is not named like a card.
+  customElements.define('x-panel', class extends HTMLElement {
+    connectedCallback() {
+      const root = this.attachShadow({ mode: this.id === 'panel-open' ? 'open' : 'closed' });
+      root.innerHTML = '<article style="display:block;height:60px;position:relative"><p></p><span class="sbadge" style="visibility:visible;position:absolute;right:0;top:0">9:00</span></article>';
+      root.querySelector('p').textContent = this.id === 'panel-open' ? 'GTA 6 in an open shadow tree' : 'GTA 6 in a closed shadow tree';
+    }
+  });
+</script>
+</body>
+</html>

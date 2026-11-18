@@ -15,9 +15,11 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/matcher.js", "content.js"],
+      "js": ["lib/matcher.js", "lib/cover.js", "lib/page.js", "content.js"],
+      "css": ["content.css"],
       "run_at": "document_start",
-      "all_frames": true
+      "all_frames": true,
+      "match_about_blank": true
     }
   ]
 }

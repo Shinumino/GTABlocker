@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Many videos (test fixture)</title>
+<style> body { margin: 0; font: 14px/20px sans-serif; } .tile { height: 60px; } </style></head>
+<body>
+<ul id="list"></ul>
+<script>
+  // 2,000 tiles, every 10th about GTA, added at once the way an infinite feed adds a page.
+  const list = document.getElementById('list');
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < 2000; i++) {
+    const li = document.createElement('li');
+    li.className = 'tile';
+    li.setAttribute('data-test-made', '');
+    li.textContent = i % 10 === 0 ? `Video ${i}: GTA 6 news` : `Video ${i}: a dog doing tricks`;
+    frag.appendChild(li);
+  }
+  window.__madeAt = performance.now();
+  list.appendChild(frag);
+</script>
+</body>
+</html>

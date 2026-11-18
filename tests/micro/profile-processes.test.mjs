@@ -196,10 +196,14 @@ test('killing touches only the exact process: same id and same start time', () =
 });
 
 test('a Firefox that cannot be started leaves no profile behind', async () => {
-  const before = new Set(fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith('gtablocker-ff-')));
-  await assert.rejects(startFirefox({ firefoxBin: path.join(os.tmpdir(), 'no-such-firefox.exe') }), /could not start/);
-  const after = fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith('gtablocker-ff-') && !before.has(n));
-  assert.deepEqual(after, []);
+  // Its own folder for the profile, so another test file working in %TEMP% cannot race it.
+  const profileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gtab-profiles-'));
+  try {
+    await assert.rejects(startFirefox({ firefoxBin: path.join(os.tmpdir(), 'no-such-firefox.exe'), profileRoot }), /could not start/);
+    assert.deepEqual(fs.readdirSync(profileRoot), []);
+  } finally {
+    fs.rmSync(profileRoot, { recursive: true, force: true });
+  }
 });
 
 function makeProfileDir() {

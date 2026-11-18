@@ -84,18 +84,22 @@ async function waitFor(what, timeoutMs, probe) {
   throw new Error(`timed out after ${timeoutMs} ms waiting for ${what}${lastError ? ` (${lastError.message})` : ''}`);
 }
 
+// profileRoot: where the throwaway profile goes (default %TEMP%). Tests that check "no profile was
+// left" give their own folder: two test files that both looked at %TEMP% raced (2026-11-18, one
+// failure in 12 runs side by side).
 export async function startFirefox({
   prefs = {}, firefoxBin = FIREFOX_BIN, startTimeoutMs = 30_000, updateRoots = defaultRoots(),
+  profileRoot = os.tmpdir(),
 } = {}) {
   // First of all: a Firefox started while an update waits installs that update into the user's
   // Firefox (tools/firefox_update.mjs). Nothing is created or started before this check.
   assertNoWaitingUpdate(updateRoots);
 
   // Profiles left by a run that died (Ctrl+C, a crash) are stopped and deleted first.
-  const swept = await sweepStaleProfiles();
+  const swept = await sweepStaleProfiles({ tmp: profileRoot });
   if (swept.length > 0) console.warn(`removed ${swept.length} test profile(s) left by an earlier run: ${swept.join(', ')}`);
 
-  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), PROFILE_PREFIX));
+  const profileDir = await fs.mkdtemp(path.join(profileRoot, PROFILE_PREFIX));
   let tracker;
   try {
     writeOwner(profileDir);
@@ -193,6 +197,47 @@ export async function startFirefox({
     async evaluate(script, args = []) {
       const result = await marionette.send('WebDriver:ExecuteScript', { script, args });
       return result?.value;
+    },
+
+    // A real mouse click at a point of the page (viewport pixels), as a person would make it:
+    // Firefox sends trusted events, which is what a site's own handlers and links react to.
+    // button: 0 = left, 1 = middle (opens a link in a new tab), 2 = right (the context menu).
+    async clickAt(x, y, { button = 0 } = {}) {
+      await marionette.send('WebDriver:PerformActions', {
+        actions: [{
+          type: 'pointer', id: 'mouse', parameters: { pointerType: 'mouse' },
+          actions: [
+            { type: 'pointerMove', x: Math.round(x), y: Math.round(y), origin: 'viewport', duration: 0 },
+            { type: 'pointerDown', button }, { type: 'pointerUp', button },
+          ],
+        }],
+      });
+      await marionette.send('WebDriver:ReleaseActions');
+    },
+
+    // The mouse moved onto a point, and no click: video sites start a preview on this.
+    async hoverAt(x, y) {
+      await marionette.send('WebDriver:PerformActions', {
+        actions: [{
+          type: 'pointer', id: 'mouse', parameters: { pointerType: 'mouse' },
+          actions: [
+            { type: 'pointerMove', x: 1, y: 1, origin: 'viewport', duration: 0 },
+            { type: 'pointerMove', x: Math.round(x), y: Math.round(y), origin: 'viewport', duration: 50 },
+          ],
+        }],
+      });
+      await marionette.send('WebDriver:ReleaseActions');
+    },
+
+    // A real key press. Names: Escape, Enter, Tab (WebDriver's key codes), or one character.
+    async press(name) {
+      const codes = { Escape: '\u{E00C}', Enter: '\u{E007}', Tab: '\u{E004}' };
+      const value = codes[name] ?? (name.length === 1 ? name : undefined);
+      if (!value) throw new Error(`no key code for ${name}`);
+      await marionette.send('WebDriver:PerformActions', {
+        actions: [{ type: 'key', id: 'keyboard', actions: [{ type: 'keyDown', value }, { type: 'keyUp', value }] }],
+      });
+      await marionette.send('WebDriver:ReleaseActions');
     },
 
     // Polls a page expression until it is truthy; fails with what it last saw.

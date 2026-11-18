@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A video site (test fixture)</title>
+<!-- A made-up video site for the covering tests (step 3). Every size is fixed, so a cover that
+     moved the layout shows up as a changed number. -->
+<style>
+  body { margin: 0; font: 14px/20px sans-serif; width: 1000px; }
+  .grid { list-style: none; margin: 0; padding: 16px; display: grid; grid-template-columns: repeat(3, 300px); gap: 16px; }
+  .tile { display: block; height: 220px; }
+  .tile a { display: block; color: #000; text-decoration: none; }
+  .thumb { width: 300px; height: 168px; background: #888; display: block; }
+  .tile h3 { margin: 6px 0 0; font-size: 14px; line-height: 20px; height: 40px; overflow: hidden; }
+  .tile .thumbwrap { position: relative; display: block; }
+  /* A badge the site forces visible: it must not show through a cover. */
+  .badge { position: absolute; right: 4px; bottom: 4px; visibility: visible; background: #000; color: #fff; }
+  .upnext { list-style: none; margin: 0; padding: 0 16px; }
+  .upnext li { height: 32px; line-height: 32px; white-space: nowrap; overflow: hidden; }
+  .comments { padding: 0 16px; }
+  .comment { height: 64px; }
+  .split { height: 40px; padding: 0 16px; }
+  .separate { padding: 0 16px; }
+  .separate p { margin: 0; height: 20px; }
+</style>
+</head>
+<body>
+<ul class="grid" id="grid">
+  <li class="tile" id="t-dog"><a href="#t-dog-opened"><span class="thumbwrap"><img class="thumb" alt="A dog at the fridge"><span class="badge">12:01</span></span><h3>My dog learned to open the fridge</h3></a></li>
+  <li class="tile" id="t-gta"><a href="#t-gta-opened"><span class="thumbwrap"><img class="thumb" alt="Trailer"><span class="badge" id="badge-gta">8:43</span></span><h3><span>GTA 6</span> trailer 3: everything we spotted</h3></a></li>
+  <li class="tile" id="t-cook"><a href="#t-cook-opened"><span class="thumbwrap"><img class="thumb" alt="Beans"><span class="badge">30:00</span></span><h3>Feijoada in 30 minutes</h3></a></li>
+  <li class="tile" id="t-alt"><a href="#t-alt-opened"><span class="thumbwrap"><img class="thumb" alt="Vice City map tour"><span class="badge">15:20</span></span><h3>The full map tour</h3></a></li>
+  <li class="tile" id="t-label"><a href="#t-label-opened" aria-label="Rockstar Games interview"><span class="thumbwrap"><img class="thumb" alt=""><span class="badge">5:00</span></span><h3>An interview</h3></a></li>
+  <li class="tile" id="t-cat"><a href="#t-cat-opened"><span class="thumbwrap"><img class="thumb" alt="A cat"><span class="badge">2:10</span></span><h3>Cat vs. cucumber, the rematch</h3></a></li>
+</ul>
+
+<ul class="upnext" id="upnext">
+  <li id="u-puppy">How to train a puppy in one week</li>
+  <li id="u-gta">Grand Theft Auto VI: the new heist missions explained</li>
+</ul>
+
+<div class="comments" id="comments">
+  <div class="comment" id="c-ana"><b>ana.souza</b><div>Best fridge heist I have ever seen.</div></div>
+  <div class="comment" id="c-joao"><b>joao_p</b><div>This dog plans better than the GTA crew.</div></div>
+</div>
+
+<!-- One word split by markup inside one line: still one line of text on screen. -->
+<div class="split" id="split">Back to Vice <b>City</b> tonight</div>
+<!-- Two separate lines that only run together if texts are glued without a space. -->
+<div class="separate" id="separate"><p>We met the vice</p><p>city council at noon</p></div>
+
+<script>
+  // Records every element added or removed inside the page from now on, so the tests can prove
+  // the extension adds and removes nothing here. The tests' own changes are tagged.
+  window.__changes = [];
+  new MutationObserver((records) => {
+    for (const r of records) {
+      for (const n of [...r.addedNodes, ...r.removedNodes]) {
+        if (n.nodeType === 1 && !n.hasAttribute('data-test-made')) window.__changes.push(n.localName + (n.id ? '#' + n.id : ''));
+      }
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+  window.__layout = { scrollHeight: document.documentElement.scrollHeight };
+</script>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!doctype html>
+<!--
+  SUPERSEDED in one point (2026-11-18): the whole-page cover now sits on a SOLID backdrop
+  (#10141F), not the blurred page shown here. Firefox draws no blur without the graphics card,
+  and the page text then showed through; the user chose solid. See extension/lib/page.js.
+-->
+<html lang="en" data-tone="night" data-look="stripes" data-icon="paw" data-pagelook="card">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GTA Blocker: cover look</title>
+<!--
+  shinu-design preview for GTA Blocker step 3: what a cover looks like on other people's sites.
+  The covers here are made exactly the way the extension will make them: the site's own box gets
+  data-gta-cover (plus the matched word and a size), the box itself is hidden but keeps its
+  space, and the note is painted by ::after from those attributes. Nothing is added inside the
+  box. Only the whole-page cover is an element of ours.
+  The two fake sites below are made up (names, videos, comments); they only stand in for "a light
+  site" and "a dark site".
+-->
+<style>
+  /* ---------- the two made-up sites the covers sit on ---------- */
+  body { margin: 0; font: 14px/1.45 system-ui, sans-serif; background: #F2F3F5; }
+  .stage { display: grid; gap: 28px; padding: 24px 16px 160px; max-width: 1100px; margin: 0 auto; }
+  .site { border-radius: 12px; overflow: hidden; border: 1px solid #D5D9E0; }
+  .site-bar { padding: 10px 16px; font-weight: 600; }
+  .site-body { padding: 16px; }
+  .light { background: #FFFFFF; color: #0F1115; }
+  .light .site-bar { background: #FFFFFF; border-bottom: 1px solid #E5E7EB; }
+  .dark { background: #0E1113; color: #D7DADC; border-color: #2A2F33; }
+  .dark .site-bar { background: #1A1D20; border-bottom: 1px solid #2A2F33; color: #F0F2F3; }
+  [data-site="dark"] .light, [data-site="light"] .dark { display: none; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .tile { border-radius: 10px; }
+  .thumb { aspect-ratio: 16 / 9; border-radius: 10px; display: grid; place-items: center; font-size: 30px; color: #fff; }
+  .tile h3 { margin: 8px 0 2px; font-size: 14px; line-height: 1.3; }
+  .tile p { margin: 0; color: #606770; font-size: 12px; }
+  .dark .tile p { color: #8A9096; }
+  .t1 { background: linear-gradient(135deg, #7A4B2A, #C98B5A); }
+  .t2 { background: linear-gradient(135deg, #2D3F73, #4E7AC7); }
+  .t3 { background: linear-gradient(135deg, #3B6B3F, #79B26F); }
+  .t4 { background: linear-gradient(135deg, #8A2E4B, #E06A8C); }
+  .t5 { background: linear-gradient(135deg, #5A4A86, #9A86D9); }
+  .t6 { background: linear-gradient(135deg, #2F5F66, #5FB3B8); }
+
+  .comments { display: grid; gap: 2px; margin-top: 18px; }
+  .comment { padding: 8px 10px; border-radius: 8px; }
+  .comment b { font-size: 12px; }
+  .comment .who { color: #606770; font-size: 12px; }
+  .dark .comment .who { color: #8A9096; }
+  .result { padding: 10px 0; border-bottom: 1px solid #ECEEF1; }
+  .dark .result { border-color: #22272B; }
+  .result a { color: #1A0DAB; font-size: 17px; text-decoration: none; }
+  .dark .result a { color: #8AB4F8; }
+  .result .url { color: #4D5156; font-size: 12px; }
+  .dark .result .url { color: #9AA0A6; }
+  .result p { margin: 2px 0 0; color: #4D5156; }
+  .dark .result p { color: #BDC1C6; }
+  .upnext { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .upnext li { padding: 8px 10px; border-radius: 6px; background: #F4F5F7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  h2.section { font-size: 13px; color: #606770; margin: 22px 0 8px; font-weight: 600; }
+  .dark h2.section { color: #8A9096; }
+
+  /* ---------- THE COVER (what ships, as CSS on the site's own box) ---------- */
+  /* Two layers, both drawn from the site's box itself, so nothing is added to the page:
+     ::before is the surface (colour, stripes, icon), ::after is the note, centred, cut with
+     "..." when the box is too small. The extension sets data-gta-size from the box's height and
+     width: xs = no room for text,
+     s = one line fits (under about 48 px), l = a big box (over about 140 px, the only size
+     with an icon), m = the rest. */
+  :root {
+    --cover: #1B2233; --cover-ink: #E8ECF4; --cover-muted: #A9B3C7; --cover-line: #2E3A55; --gold: #E2B857; --gold-ink: #1F1806;
+    --stripes: repeating-linear-gradient(135deg, transparent 0 14px, rgba(255,255,255,.045) 14px 28px);
+    --paw: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23A9B3C7'%3E%3Cellipse cx='6' cy='9' rx='2.2' ry='2.8'/%3E%3Cellipse cx='10' cy='5.5' rx='2.2' ry='2.8'/%3E%3Cellipse cx='14' cy='5.5' rx='2.2' ry='2.8'/%3E%3Cellipse cx='18' cy='9' rx='2.2' ry='2.8'/%3E%3Cpath d='M12 11c-3 0-6 3.5-6 6.3C6 19.4 7.6 20 9 20c1.2 0 2-.6 3-.6s1.8.6 3 .6c1.4 0 3-.6 3-2.7C18 14.5 15 11 12 11z'/%3E%3C/svg%3E");
+    --eye: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A9B3C7' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z'/%3E%3Ccircle cx='12' cy='12' r='2.6'/%3E%3Cpath d='M4 4l16 16'/%3E%3C/svg%3E");
+  }
+  [data-tone="plum"]   { --cover: #261C30; --cover-ink: #F0E9F5; --cover-muted: #BBA9C9; --cover-line: #3E2E4D; }
+  [data-tone="forest"] { --cover: #17251E; --cover-ink: #E6F0EA; --cover-muted: #A3BCAE; --cover-line: #29402F; }
+  [data-tone="fur"]    { --cover: #2A2119; --cover-ink: #F3ECE4; --cover-muted: #C3B29E; --cover-line: #46372A; }
+
+  [data-gta-cover] { position: relative; visibility: hidden; }
+  /* Everything inside a covered box is hidden, even a child the site forces visible (a positioned
+     child set to visibility: visible painted over the surface, found in review). :not(#\#) lifts
+     the rule to id strength, above ordinary site rules. */
+  [data-gta-cover] *:not(#\#) { visibility: hidden !important; }
+  [data-gta-cover]::before {
+    content: ""; visibility: visible; position: absolute; inset: 2px; border-radius: inherit; cursor: default;
+    background-color: var(--cover);
+  }
+  [data-gta-cover]::after {
+    visibility: visible; position: absolute; left: 12px; right: 12px; top: 50%; transform: translateY(-50%); cursor: default;
+    color: var(--cover-ink); font: 600 14px/1.3 system-ui, sans-serif; text-align: center;
+    white-space: pre-line; overflow: hidden;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+    content: "Hidden: this was about GTA\A" "(matched: " attr(data-gta-word) ")";
+  }
+  [data-gta-size="l"]::after { font-size: 16px; -webkit-line-clamp: 4; }
+  /* One line: cut with "..." at the end rather than at the edge. */
+  [data-gta-size="s"]::after {
+    display: block; text-align: left; font-size: 13px;
+    white-space: nowrap; text-overflow: ellipsis;
+    content: "Hidden: this was about GTA (matched: " attr(data-gta-word) ")";
+  }
+
+  [data-look="stripes"] [data-gta-cover]::before { background-image: var(--stripes); }
+  [data-look="outlined"] [data-gta-cover]::before { box-shadow: inset 0 0 0 1.5px var(--cover-line); }
+
+  /* The icon rides in the note's own layer, above the text, so it moves with the text and can
+     never overlap it however the note wraps. Big boxes only. */
+  [data-icon="paw"] [data-gta-cover][data-gta-size="l"]::after,
+  [data-icon="eye"] [data-gta-cover][data-gta-size="l"]::after {
+    padding-top: 34px; background-repeat: no-repeat; background-position: center top; background-size: 26px;
+  }
+  [data-icon="paw"] [data-gta-cover][data-gta-size="l"]::after { background-image: var(--paw); }
+  [data-icon="eye"] [data-gta-cover][data-gta-size="l"]::after { background-image: var(--eye); }
+
+  /* A box too small for any text keeps only the striped surface. */
+  [data-gta-cover][data-gta-size="xs"]::after { content: none; }
+
+  /* Choice: a quieter note, for pages full of covers. */
+  [data-note="quiet"] [data-gta-cover]::after { color: var(--cover-muted); font-weight: 400; }
+
+  /* Choice: one-line covers put the matched word first, so it is not the part that gets cut. */
+  [data-oneline="word"] [data-gta-cover][data-gta-size="s"]::after {
+    content: "Hidden (GTA): " attr(data-gta-word);
+  }
+
+  /* ---------- the whole-page cover (an element of ours, at the top of the page) ---------- */
+  #gta-page-cover { position: fixed; inset: 0; z-index: 2147482000; display: none; place-items: center;
+                    background: var(--cover); color: var(--cover-ink); font: 15px/1.5 system-ui, sans-serif; padding: 24px; }
+  [data-page="on"] #gta-page-cover { display: grid; }
+  #gta-page-cover .box { max-width: 420px; text-align: center; }
+  [data-pagelook="card"] #gta-page-cover { background: rgba(12, 15, 22, .82); backdrop-filter: blur(18px); }
+  [data-pagelook="card"] #gta-page-cover .box { background: var(--cover); border: 1px solid var(--cover-line); border-radius: 16px; padding: 28px 28px 24px; }
+  #gta-page-cover h1 { font-size: 22px; margin: 0 0 4px; }
+  #gta-page-cover .word { color: var(--cover-muted); margin: 0 0 20px; }
+  #gta-page-cover .once { color: var(--cover-muted); font-size: 13px; margin: 10px 0 0; }
+  #gta-page-cover button { font: 600 15px system-ui, sans-serif; background: var(--gold); color: var(--gold-ink); border: 0; border-radius: 10px; padding: 10px 20px; min-height: 44px; cursor: pointer; }
+  #gta-page-cover button:hover { filter: brightness(1.08); }
+  #gta-page-cover button:focus-visible { outline: 3px solid #FFFFFF; outline-offset: 3px; }
+
+  /* ---- the switch panel: NOT part of any design, never ships ---- */
+  #pv { position: fixed; right: 16px; bottom: 16px; width: 300px; max-height: calc(100vh - 32px); overflow-y: auto; z-index: 2147483000;
+        background: #FFFFFF; color: #1A1E24; border: 2px dashed #8A93A3; border-radius: 12px; padding: 12px 14px;
+        font: 13px/1.4 system-ui, sans-serif; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+  #pv .pv-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  #pv .pv-head b { font-size: 14px; }
+  #pv small { color: #5A6370; }
+  #pv fieldset { border: 0; margin: 10px 0 0; padding: 0; }
+  #pv legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
+  #pv label { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+  #pv .pv-decided { margin: 10px 0 0; padding: 8px; background: #EEF2F6; border-radius: 6px; }
+  #pv .pv-clash { margin: 10px 0 0; padding: 8px; background: #FDE2E0; color: #8A1C12; border: 1px solid #E5A29B; border-radius: 6px; font-weight: 600; }
+  #pv .pv-decided ul { margin: 4px 0 0; padding-left: 18px; }
+  #pv button { font: inherit; border: 1px solid #C9CFD8; background: #F4F6F8; border-radius: 6px; padding: 3px 9px; cursor: pointer; color: #1A1E24; }
+  #pv .pv-open { display: none; border: 0; background: #fff; font-weight: 600; padding: 9px 14px; border-radius: 10px; }
+  #pv.min { width: auto; padding: 0; border-style: solid; }
+  #pv.min > :not(.pv-open) { display: none; }
+  #pv.min .pv-open { display: block; }
+  @media (max-width: 700px) { #pv { left: 16px; right: 16px; width: auto; max-height: 70vh; } #pv.min { left: auto; } }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- A made-up light site: a video grid, comments under a video, search results. -->
+  <section class="site light" aria-label="A light site">
+    <div class="site-bar">A light video site (made up)</div>
+    <div class="site-body">
+      <div class="grid">
+        <div class="tile"><div class="thumb t1">&#x1F436;</div><h3>My dog learned to open the fridge</h3><p>Pipoca e Amigos &middot; 1.2M views</p></div>
+        <div class="tile" data-gta-cover data-gta-word="gta*" data-gta-size="l"><div class="thumb t2">&#x1F697;</div><h3>GTA 6 trailer 3: everything we spotted</h3><p>Canal Gamer BR &middot; 3.4M views</p></div>
+        <div class="tile"><div class="thumb t3">&#x1F373;</div><h3>Feijoada in 30 minutes</h3><p>Cozinha da Vó &middot; 880K views</p></div>
+        <div class="tile"><div class="thumb t4">&#x1F3AC;</div><h3>Deadpool 4 confirmed? What we know</h3><p>Cinema Hoje &middot; 2.1M views</p></div>
+        <div class="tile" data-gta-cover data-gta-word="vice city" data-gta-size="l"><div class="thumb t5">&#x1F334;</div><h3>Back to Vice City: the full map tour</h3><p>Mapas e Mods &middot; 640K views</p></div>
+        <div class="tile"><div class="thumb t6">&#x1F431;</div><h3>Cat vs. cucumber, the rematch</h3><p>Gatos do Bairro &middot; 5M views</p></div>
+      </div>
+
+
+      <h2 class="section">Up next</h2>
+      <ul class="upnext">
+        <li>How to train a puppy in one week</li>
+        <li data-gta-cover data-gta-word="grand theft auto" data-gta-size="s">Grand Theft Auto VI: the new heist missions explained</li>
+        <li>Easy brigadeiro for parties</li>
+      </ul>
+
+      <h2 class="section">Comments</h2>
+      <div class="comments">
+        <div class="comment"><b>ana.souza</b> <span class="who">2 hours ago</span><div>Best fridge heist I have ever seen.</div></div>
+        <div class="comment" data-gta-cover data-gta-word="gta*" data-gta-size="m"><b>joao_p</b> <span class="who">1 hour ago</span><div>This dog has more planning skills than the GTA 6 crew.</div></div>
+        <div class="comment"><b>mari.k</b> <span class="who">40 minutes ago</span><div>Pipoca for president.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- A made-up dark site: search results and a discussion thread. -->
+  <section class="site dark" aria-label="A dark site">
+    <div class="site-bar">A dark forum and search (made up)</div>
+    <div class="site-body">
+      <div class="result"><div class="url">receitas.example &rsaquo; feijoada</div><a href="#">Feijoada completa: the full recipe</a><p>Black beans, pork and orange slices, ready in two hours.</p></div>
+      <div class="result" data-gta-cover data-gta-word="rockstar games" data-gta-size="m"><div class="url">news.example &rsaquo; games</div><a href="#">Rockstar Games shows the GTA 6 map for the first time</a><p>The new state of Leonida is the biggest map the studio has made.</p></div>
+      <div class="result" data-gta-cover data-gta-word="los santos" data-gta-size="m"><div class="url">feriados.example &rsaquo; noviembre</div><a href="#">Día de todos los santos: what is open</a><p>Shops, banks and transport on the first of November.</p></div>
+      <div class="result"><div class="url">pets.example &rsaquo; dogs</div><a href="#">Why dogs tilt their heads when you talk</a><p>A short answer from a vet.</p></div>
+
+      <h2 class="section">A long post</h2>
+      <div class="comment" data-gta-cover data-gta-word="jason and lucia" data-gta-size="l" style="min-height: 170px"><b>u/longreads</b><p>Jason and Lucia's story is the heart of the new game, and here is everything the trailers have shown about them so far, scene by scene, with the timestamps.</p></div>
+    </div>
+  </section>
+</div>
+
+<!-- The whole-page cover: the one element of ours, shown when the page title is about GTA. -->
+<div id="gta-page-cover" role="dialog" aria-modal="true" aria-labelledby="gta-page-cover-title">
+  <div class="box">
+    <h1 id="gta-page-cover-title">This page is about GTA</h1>
+    <p class="word">(matched: gta*)</p>
+    <button type="button" id="gta-show-anyway">Show anyway</button>
+    <p class="once">Only for this visit.</p>
+  </div>
+</div>
+
+<script>
+var PREVIEW = {
+  choices: [
+    { key: 'site', label: 'Show on', options: [['both', 'Both sites'], ['light', 'Light site only'], ['dark', 'Dark site only']] },
+    { key: 'note', label: 'Note on the cover', options: [['bright', 'Bright, bold (as before)'], ['quiet', 'Quieter (soft colour, regular)']] },
+    { key: 'oneline', label: 'One-line covers', options: [['sentence', 'Hidden: this was about GTA (matched: ...)'], ['word', 'Hidden (GTA): the word']] },
+    { key: 'page', label: 'Whole-page cover', options: [['off', 'Not shown'], ['on', 'Show it']] },
+    { key: 'tab', label: 'Tab title under a whole-page cover', options: [['keep', 'Left as the site set it'], ['hide', 'Hidden page']] }
+  ],
+  decided: [
+    'Dark only (all our sites)',
+    'Covers are not clickable (the toolbar switch, step 4, shows things)',
+    'Night blue, faint stripes, a paw on big covers (your picks)',
+    'Whole-page cover: a card over the blurred page (your pick)',
+    'The note: "Hidden: this was about GTA" and the matched word',
+    'A box too short for two lines gets one line, cut with ...',
+    'Gold button = do something',
+    'Picked after this preview: one-line covers read "Hidden (GTA): the word"; the tab says "Hidden page"; the backdrop is solid',
+    'Dog and cat photos over pictures come in step 5'
+  ],
+  onChange: function (state) {
+    // The real extension would show the whole-page cover as a modal window (focus stays in it); the
+    // preview keeps it non-modal so the Preview options box still works.
+    document.title = state.page === 'on' && state.tab === 'hide' ? 'Hidden page' : 'GTA 6 trailer 3: everything we spotted - a video site';
+  }
+};
+window.addEventListener('click', function (e) {
+  var box = e.target.closest && e.target.closest('[data-gta-cover]');
+  if (box) { e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);
+document.getElementById('gta-show-anyway').addEventListener('click', function () {
+  var input = document.querySelector('#pv input[name="page"][value="off"]');
+  if (input) { input.checked = true; input.dispatchEvent(new Event('change', { bubbles: true })); }
+});
+</script>
+
+<script>
+// The switch panel (from the shinu-design template). Nothing here belongs to the design.
+(function () {
+  var root = document.documentElement, q = new URLSearchParams(location.search), state = {};
+  PREVIEW.choices.forEach(function (c) {
+    var want = q.get(c.key), known = c.options.some(function (o) { return o[0] === want; });
+    state[c.key] = known ? want : c.options[0][0];
+  });
+  var pv = document.createElement('aside');
+  pv.id = 'pv';
+  pv.setAttribute('aria-label', 'Preview options');
+  var html = '<button class="pv-open" type="button" id="pv-open">Preview options</button>' +
+             '<div class="pv-head"><b>Preview options</b><button type="button" id="pv-hide">Hide</button></div>' +
+             '<small>Not part of the design. Flip these to compare.</small>';
+  PREVIEW.choices.forEach(function (c) {
+    html += '<fieldset><legend>' + c.label + '</legend>' + c.options.map(function (o) {
+      return '<label><input type="radio" name="' + c.key + '" value="' + o[0] + '"> ' + o[1] + '</label>';
+    }).join('') + '</fieldset>';
+  });
+  if (PREVIEW.decided && PREVIEW.decided.length) {
+    html += '<div class="pv-decided"><b>Decided</b><ul>' + PREVIEW.decided.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul></div>';
+  }
+  pv.innerHTML = html;
+  document.body.appendChild(pv);
+  function apply() {
+    Object.keys(state).forEach(function (k) { root.dataset[k] = state[k]; });
+    pv.querySelectorAll('input[type=radio]').forEach(function (r) { r.checked = state[r.name] === r.value; });
+    var url = new URL(location.href);
+    Object.keys(state).forEach(function (k) { url.searchParams.set(k, state[k]); });
+    history.replaceState(null, '', url);
+    if (PREVIEW.onChange) PREVIEW.onChange(state);
+  }
+  pv.addEventListener('change', function (e) {
+    if (e.target.name in state) { state[e.target.name] = e.target.value; apply(); }
+  });
+  function clashCheck() {
+    var old = pv.querySelector('.pv-clash'); if (old) old.remove();
+    var hits = PREVIEW.choices.map(function (c) { return c.key; }).filter(function (k) {
+      return Array.prototype.some.call(document.body.querySelectorAll('[data-' + k + ']'), function (el) { return !pv.contains(el); });
+    });
+    if (!hits.length) return;
+    var p = document.createElement('p'); p.className = 'pv-clash';
+    p.textContent = 'Name clash: ' + hits.map(function (k) { return '"' + k + '"'; }).join(', ') + ' is a preview choice AND a data- attribute on the page.';
+    pv.insertBefore(p, pv.querySelector('fieldset'));
+  }
+  pv.addEventListener('change', clashCheck);
+  pv.querySelector('#pv-hide').addEventListener('click', function () { pv.classList.add('min'); });
+  pv.querySelector('#pv-open').addEventListener('click', function () { pv.classList.remove('min'); });
+  if (q.get('pv') === '0') pv.hidden = true;
+  else if (matchMedia('(max-width: 700px)').matches) pv.classList.add('min');
+  apply();
+  clashCheck();
+})();
+</script>
+</body>
+</html>

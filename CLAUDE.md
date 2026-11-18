@@ -96,30 +96,68 @@ mutation pass, before the next starts.
    pattern. Caps: 200 entries, 80 characters after normalizing, 10 words, 3 letters or digits.
    `compile()` returns `find(text)` (the entry as written, or null; the earliest match wins,
    then list order) and `rejected` (`{ index, entry, code, reason }`, plus `sameAs` for a
-   repeat; blank lines are skipped). Contracts for step 3, written in the file's header: it is
-   for human text, not addresses or ids, and the texts of separate nodes must be joined with
-   a space.
-3. Covering on any site: find the box around a match, cover pictures with a photo and text with
-   a note, never remove; re-check a box when its content changes (YouTube reuses tiles). Decide
-   then how DOM rules get micro tests (pure functions over plain data, or a pinned DOM library).
-   The fixture server may need per-page headers then (sites ship a strict CSP) and video types.
+   repeat; blank lines are skipped). Contracts, written in the file's header: it is for human
+   text, not addresses or ids, and it is given one line at a time (lib/page.js joins the pieces
+   of one line as they show and never joins separate lines, since it takes any gap between words).
+3. **Covering** (built 2026-11-18, reviewed and fixed the same day).
+   - `lib/cover.js`: the rules as plain logic over plain descriptions of elements (micro tests,
+     no DOM library): the smallest card around a match (tags, roles, card-like custom elements,
+     class tokens like `comment` or `video-card`), a card at most 60% of the screen, else the
+     nearest block at any size; never html/body/main; never a box inside a shadow tree (the page
+     stylesheet does not reach there; its host is covered); a box whose site uses both its
+     ::before and ::after is passed over, one used means a one-layer cover (`layersFor`); sizes
+     xs/s/m/l from the box's height and width.
+   - `lib/page.js`: reads the real page line by line (the pieces of one line joined, separate
+     lines and child blocks never), plus alt, title and aria-label, entering shadow trees (each
+     frame runs its own copy: all_frames, match_about_blank). Covers with attributes only, and
+     sets a covered box's own tooltip aside in data-gta-title. Watches the page from
+     document_start; a change re-reads only the line it touches; a covered box that changes is
+     chosen again from scratch; removed boxes are let go; hidden matches wait until shown;
+     editable areas are never read. Swallows clicks, hovers and keys aimed at a cover.
+   - The whole-page cover (top page: a modal `<dialog>` in a closed shadow tree on `<html>`,
+     under a name that changes every run; in a frame: a plain panel that never takes the focus):
+     it follows the address, not the title (it stays until Show anyway, whatever the site does
+     with its title; the first title the site sets for a new address decides again); the tab
+     says "Hidden page"; Escape cannot close it; no key reaches the page and its video or sound
+     is paused; a page that removes it gets it back. Its look is PAGE_COVER_CSS in page.js, on a
+     solid backdrop (see the note in `docs/design/cover-preview.html`).
+   - `content.css` draws the cover on boxes (the agreed look).
+   - Known gap: a shadow tree attached long after its host appeared is only read when the host
+     changes. Dog and cat photos (step 5) will replace the note on pictures.
 4. Toolbar: the switch (everywhere / this site, read live), the count on the icon, the settings
    page with the word list. Rebuild the matcher on every list change (about 1 ms for 200
    entries) and swap it in; show each refusal's `reason` next to its line (`index`). The page
-   marker must never reflect the user's own list (a page could read it). Reaching the toolbar from a test needs Marionette's chrome context;
+   marker must never reflect the user's own list (a page could read it). Open points from the
+   step 3 reviews, to settle at the start of step 4:
+   - the off switch needs `page.start` to return a stop(): disconnect both observers, remove
+     the listeners, uncover everything, close the whole-page cover (and restore the title);
+   - "Show anyway" (revealedAt) must outlive a stop and start, or a toggle brings the cover back;
+   - the right click is swallowed on covers (preventDefault on contextmenu), which also blocks
+     a per-cover "Report this cover" menu: decide which;
+   - `chooseBox` should say why it chose a box (card by tag, role, name, class, or the nearest
+     block) for the report;
+   - move the whole-page cover's decisions (checkTitle) into lib/cover.js with micro tests
+     before changing them;
+   - a page can test whether a word is on the list (it sees what gets covered): harmless for
+     the default list, but the user's own words would be readable that way. Decide with the
+     user;
+   - reloading the extension leaves an old whole-page cover with a dead button.
+   Reaching the toolbar from a test needs Marionette's chrome context;
    a review said Firefox 138+ wants `--remote-allow-system-access` for that (not verified yet).
    A fixed extension id for `moz-extension://` addresses goes in then too.
 5. The bundled dog and cat photos, with their licences.
 6. Site rules, one site per step: YouTube (with the Shorts player), Reddit, X, Google, Instagram.
    If a site needs words of its own, give it its own matcher: adding them to the user's list
-   would take places in the user's 200 and show up on their settings page as theirs.
+   would take places in the user's 200 and show up on their settings page as theirs. Move the
+   site names now in the general rules (`shreddit|reddit` in CARD_NAME, `tweet` in
+   CARD_CLASS) into the site rules then.
 7. Signing (AMO, unlisted) and installing it in the user's Firefox. The signing command runs
    `check.cmd` first and sends nothing on a red run.
 
 ## Security pass (step 1, 2026-11-18)
 
-- **New input, from whom?** None in the shipped extension yet: it runs on every page and only
-  sets one attribute. In the harness: pages from our own fixture server, Marionette replies from
+- **New input, from whom?** None in the step 1 extension: it ran on every page and only set one
+  attribute (step 3 reads the page, below). In the harness: pages from our own fixture server, Marionette replies from
   the Firefox it started, and the process list (ids, parents, start times, names; never another
   program's command line: the profile match runs inside WMI).
 - **New surface?**
@@ -134,9 +172,9 @@ mutation pass, before the next starts.
   have; the user agreed to it on 2026-11-18. In return: no other permission, no background
   script, no network access, no remote code, and `data_collection_permissions: none`. These are
   tests now, not promises: `tests/micro/extension-rules.test.mjs`.
-- **What can a hostile page do, and what caps it?** Today, read the marker attribute and so learn
-  that the extension is installed. Nothing about the user is in it. Later steps read page text;
-  that text is data, never code, and the covers are built from our own strings and photos.
+- **What can a hostile page do, and what caps it?** In step 1, read the marker attribute and so
+  learn that the extension is installed. Nothing about the user is in it. Page text is data,
+  never code, and the covers are built from our own strings (step 3 below).
 - **Step 2 (matching, 2026-11-18).** New input: the text of every page (from step 3 on) and the
   user's own list (step 4). What hostile page text can try, and what stops it:
   - make the pattern slow: every run of spaces, punctuation and symbols is collapsed to one
@@ -152,6 +190,29 @@ mutation pass, before the next starts.
   else that is not a letter or digit is escaped). An entry with fewer than 3 letters or digits
   is refused, but a common 3-letter word ("the") is accepted and would cover most pages: that
   is the user's own choice in step 4. No new surface or permission.
+- **Step 3 (covering, 2026-11-18).**
+  - New input: every page's structure, styles, text and title, in every frame (all_frames,
+    match_about_blank).
+  - New surface: attributes on a site's boxes (`data-gta-cover`, `-word`, `-size`, `-anchor`,
+    `-layers`, `-title`, `-within`); `content.css` on every page; a small stylesheet added to
+    each shadow tree found (hides a covered host's shadow content); one element of ours, the
+    whole-page cover, on `<html>`, in a closed shadow tree, built element by element (no HTML
+    strings; the matched word goes in as text); capture-phase listeners on `window` that act
+    on events whose path holds a covered box, and on every key while the whole-page cover is
+    up; the tab title, rewritten to "Hidden page" while a page is covered; media on that page
+    paused.
+  - New permission: none.
+  - What a hostile page can do, and what caps it: read the attributes and so learn which word
+    matched, and test whether a word is on the list by watching what gets covered (today the
+    public default list; a step 4 decision for the user's own words); fake a cover on its own
+    content (harmless); fight the whole-page cover on its own page: it cannot hide it with
+    styles (display, visibility, opacity and content-visibility are pinned inline), cannot
+    break it with an element of the same name (the name changes every run), and gets it back
+    when it removes it; a page that draws its GTA content in a canvas or an image without
+    text cannot be read at all (accepted). Make us work by changing itself constantly: changes
+    are read in batches every 30 ms, a change re-reads only its own line, and finding the
+    outermost changed parts walks each one's ancestors (no pairwise comparison); there is no
+    cap. Shadow trees nested more than 32 deep are not read.
 - **No invisible or direction-changing character in any file** (`tests/micro/source-text.test.mjs`).
   The file tool used here turns a typed `\uXXXX` into the real character; write `\u{...}`.
 - **Done automatically in `check.cmd`:** `npm audit` (dependencies) and `tools/check_repo.mjs`

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GTA 6 trailer 3: everything we spotted - a video site</title>
+<!-- A page whose own title is about GTA: it gets the whole-page cover (step 3). -->
+<style> body { margin: 0; font: 14px sans-serif; } a { display: block; padding: 8px; } </style>
+</head>
+<body>
+<h1>Watch</h1>
+<a id="behind" href="#behind-opened">A link behind the cover</a>
+<p>Some description of the video.</p>
+<script>
+  // Keys the page hears: under the whole-page cover a key must not start the hidden video.
+  window.__keys = [];
+  document.addEventListener('keydown', (e) => window.__keys.push(e.key), true);
+  // A sound that starts playing, as a video page's player would: silent, looped, and muted so
+  // the browser lets it start on its own.
+  const rate = 8000;
+  const samples = rate; // one second
+  const buffer = new ArrayBuffer(44 + samples);
+  const v = new DataView(buffer);
+  const text = (at, s) => { for (let i = 0; i < s.length; i++) v.setUint8(at + i, s.charCodeAt(i)); };
+  text(0, 'RIFF'); v.setUint32(4, 36 + samples, true); text(8, 'WAVE'); text(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  text(36, 'data'); v.setUint32(40, samples, true);
+  for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128);
+  const audio = document.createElement('audio');
+  audio.id = 'sound';
+  audio.setAttribute('data-test-made', '');
+  audio.muted = true;
+  audio.loop = true;
+  audio.src = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+  document.body.appendChild(audio);
+  audio.play().catch(() => {});
+</script>
+</body>
+</html>

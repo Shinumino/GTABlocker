@@ -19,8 +19,9 @@
 //
 // For human text, not addresses or ids: camel case is split, so a random video id such as
 // "xGtaQ1" reads as "x gta q1" and matches (about 1 in 19,000 random YouTube ids, measured in
-// review). Step 3 must also join the texts of separate page nodes with a space, because "vice"
-// in one node and "city" in the next would otherwise run together into "vicecity".
+// review). The page side (lib/page.js) gives it one line at a time: the pieces of one line
+// joined as they show on screen, separate lines never joined, because "vice" on one line and
+// "city" on the next would otherwise read as "vice city" (it takes any gap between words).
 
 (function (root) {
   'use strict';
