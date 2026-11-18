@@ -74,6 +74,24 @@ test('the real secret values are refused in UTF-8 and UTF-16, and no piece of th
   }
 });
 
+test('a file at an odd position in a bigger buffer does not crash the check', () => {
+  // Node 24.19 dies on the spot (no message; heap corruption) decoding as UTF-16 a slice that starts
+  // at an odd byte and has an odd length of a few KB. Staged copies are slices of git's one
+  // output buffer, so this happened on the first check after the first commit (2026-11-18).
+  const big = Buffer.alloc(3_051, 0x61);
+  for (const bytes of [big.subarray(1, 3_050), big.subarray(1, 3_049), big.subarray(0, 3_049)]) {
+    assert.deepEqual(findProblems([{ path: 'x.txt', bytes }], [['WEB_EXT_API_SECRET', fakeSecret]]), []);
+  }
+  const withKey = Buffer.concat([Buffer.from('x'), Buffer.from(`key ${fakeIssuer} `.repeat(200), 'utf16le'), Buffer.from('y')]);
+  assert.equal(findProblems([{ path: 'k.txt', bytes: withKey.subarray(1, withKey.length) }], []).length, 1);
+  // A UTF-16 key with nothing after it, at the start of the buffer and at an odd offset. It
+  // ends in a single digit, so losing the last character would leave no key shape to find.
+  const keyOnly = Buffer.from(['user', '12345678', '9'].join(':'), 'utf16le');
+  const shifted = Buffer.concat([Buffer.from('z'), keyOnly]);
+  assert.equal(findProblems([{ path: 'a.txt', bytes: keyOnly }], []).length, 1);
+  assert.equal(findProblems([{ path: 'b.txt', bytes: shifted.subarray(1) }], []).length, 1);
+});
+
 test('a secret too short to be real is ignored, so an empty or placeholder value cannot match everything', () => {
   assert.deepEqual(findProblems([file('a.txt', 'abc')], [['WEB_EXT_API_SECRET', 'abc']]), []);
   assert.deepEqual(findProblems([file('a.txt', 'abc')], [['WEB_EXT_API_SECRET', '']]), []);

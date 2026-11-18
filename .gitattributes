@@ -1,0 +1,4 @@
+# Keep every text file as LF on checkout. The files were written and tested as LF, and the
+# mutation pass (tools/mutation-pass.mjs) finds its edits by exact text, so a checkout that
+# turned them into CRLF would make every break report NOT APPLIED.
+* text=auto eol=lf

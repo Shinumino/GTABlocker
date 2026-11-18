@@ -40,8 +40,25 @@ Needs: Node 24, git (the repo check reads git's view of the files), the installe
   opens `www.youtube.com` gets our page; a host with no fixture gets a 404, never the real site.
 - `tools/test.mjs` runs the suites for both `test.cmd` and `check.cmd`. It is red when no test
   ran, because `node --test` alone calls that a pass.
+- **Extension code is plain scripts, no build** (user's choice, 2026-11-18). Firefox content
+  scripts cannot use import/export, and the scripts listed together in the manifest share one
+  global, so each file adds its part to one object, `GtaBlocker` (`lib/matcher.js` adds
+  `GtaBlocker.matcher`). Micro tests load the same files with
+  `tests/support/extension-script.mjs`, in a fresh `vm` context that has the JavaScript
+  built-ins and nothing else, so a script that reaches for `document` or `process` fails there.
+  Values from that context are another realm: compare `plain()` copies. Macro tests run the
+  same file inside Firefox (`matcher-in-firefox.test.mjs`) against the same table of cases
+  (`tests/support/matcher-cases.mjs`), because Node and Firefox have different engines.
 
 ## Rules that are not gates, so they are written here
+
+- **Never start Firefox while an update is waiting** (now a gate: `tools/firefox_update.mjs`,
+  run by `startFirefox` and `run.cmd`). Firefox installs a waiting update at launch, before it
+  reads any setting, into `C:\Program Files\Mozilla Firefox`, under the user's open Firefox.
+  On 2026-11-18 the first test run of this project did exactly that (160.0 to 160.0.1, Firefox's
+  update log at 08:49:43) and its killed test browser left a crash report in the user's
+  per-user Crash Reports folder. If the gate says an update waits: ask the user to restart
+  their own Firefox; never work around it.
 
 - **Never stop Firefox by name, never by id alone.** The user has Firefox open all day and it
   starts processes all the time. `tests/support/firefox-process.mjs` decides what is ours: the
@@ -68,19 +85,34 @@ mutation pass, before the next starts.
 
 1. **Harness** (done 2026-11-18): the four commands, the Firefox driver, the fixture server, the
    repo check.
-2. Matching: the GTA word list and its rules, as pure functions. First decide how extension code
-   reaches the micro tests: content scripts are classic scripts in Firefox (no `export`), while
-   this package is ES modules for Node.
+2. **Matching** (built 2026-11-18, `extension/lib/matcher.js`; the rules are in its header).
+   In short: case, accents (Latin, Greek, Cyrillic), full-width letters, trademark signs and
+   every format or default-ignorable character do not matter; the words of an entry may be
+   written together or with any spaces, punctuation or symbols between ("vicecity",
+   "Vice-City", "#ViceCity"); `&` means "and" (user's choice: a list like "Jason, Lucia and
+   Pedro" is not the pair); whole words only, where only a letter of the same script continues
+   a word (so `我在玩GTA5` matches) and a digit ends it; a trailing `*` means "a word starting
+   with". Punctuation in an entry only separates words; nothing in an entry can act as a
+   pattern. Caps: 200 entries, 80 characters after normalizing, 10 words, 3 letters or digits.
+   `compile()` returns `find(text)` (the entry as written, or null; the earliest match wins,
+   then list order) and `rejected` (`{ index, entry, code, reason }`, plus `sameAs` for a
+   repeat; blank lines are skipped). Contracts for step 3, written in the file's header: it is
+   for human text, not addresses or ids, and the texts of separate nodes must be joined with
+   a space.
 3. Covering on any site: find the box around a match, cover pictures with a photo and text with
    a note, never remove; re-check a box when its content changes (YouTube reuses tiles). Decide
    then how DOM rules get micro tests (pure functions over plain data, or a pinned DOM library).
    The fixture server may need per-page headers then (sites ship a strict CSP) and video types.
 4. Toolbar: the switch (everywhere / this site, read live), the count on the icon, the settings
-   page with the word list. Reaching the toolbar from a test needs Marionette's chrome context;
+   page with the word list. Rebuild the matcher on every list change (about 1 ms for 200
+   entries) and swap it in; show each refusal's `reason` next to its line (`index`). The page
+   marker must never reflect the user's own list (a page could read it). Reaching the toolbar from a test needs Marionette's chrome context;
    a review said Firefox 138+ wants `--remote-allow-system-access` for that (not verified yet).
    A fixed extension id for `moz-extension://` addresses goes in then too.
 5. The bundled dog and cat photos, with their licences.
 6. Site rules, one site per step: YouTube (with the Shorts player), Reddit, X, Google, Instagram.
+   If a site needs words of its own, give it its own matcher: adding them to the user's list
+   would take places in the user's 200 and show up on their settings page as theirs.
 7. Signing (AMO, unlisted) and installing it in the user's Firefox. The signing command runs
    `check.cmd` first and sends nothing on a red run.
 
@@ -105,6 +137,23 @@ mutation pass, before the next starts.
 - **What can a hostile page do, and what caps it?** Today, read the marker attribute and so learn
   that the extension is installed. Nothing about the user is in it. Later steps read page text;
   that text is data, never code, and the covers are built from our own strings and photos.
+- **Step 2 (matching, 2026-11-18).** New input: the text of every page (from step 3 on) and the
+  user's own list (step 4). What hostile page text can try, and what stops it:
+  - make the pattern slow: every run of spaces, punctuation and symbols is collapsed to one
+    space before matching, so the pattern only ever sees short gaps (a 20-million-symbol gap
+    once overflowed its stack), and piles of 8 or more combining marks are dropped before
+    Unicode normalization (100,000 of them once took 2 s). The micro test feeds both, plus a
+    116 KB page, with a 1 s limit. That limit catches a catastrophic slowdown, not a small one;
+  - hide a word: every format and default-ignorable character is removed (a test walks all of
+    them), full-width letters are turned into normal ones, and trademark signs become gaps;
+  - read our state: `GtaBlocker` lives in the content script's own scope, and the matcher takes
+    it only as an own property, so a page element with that id cannot stand in for it.
+  A user's entry can never act as a pattern (punctuation only separates words, and anything
+  else that is not a letter or digit is escaped). An entry with fewer than 3 letters or digits
+  is refused, but a common 3-letter word ("the") is accepted and would cover most pages: that
+  is the user's own choice in step 4. No new surface or permission.
+- **No invisible or direction-changing character in any file** (`tests/micro/source-text.test.mjs`).
+  The file tool used here turns a typed `\uXXXX` into the real character; write `\u{...}`.
 - **Done automatically in `check.cmd`:** `npm audit` (dependencies) and `tools/check_repo.mjs`
   (no `.env`, no Mozilla API key shape, no known key value in the working copy, the staged copy,
   or anything under `extension/`).

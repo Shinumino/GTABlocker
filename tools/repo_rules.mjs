@@ -27,6 +27,17 @@ const MIN_SECRET_LENGTH = 8;
 
 const ENV_FILE = /^\.env(\..+)?$/;
 
+// The bytes as UTF-16 text, decoded from a fresh copy of even length. Node 24.19 kills the
+// whole process with no message (Windows reports heap corruption, 0xC0000374; Git Bash showed
+// exit 127) decoding a slice that starts at an odd byte with an odd length of a few KB, and
+// staged copies are slices of git's single output buffer. A fresh Buffer.alloc starts at
+// offset 0, and an odd last byte cannot hold a UTF-16 character anyway.
+function utf16Text(bytes) {
+  const even = Buffer.alloc(bytes.length - (bytes.length % 2));
+  bytes.copy(even, 0, 0, even.length);
+  return even.toString('utf16le');
+}
+
 // files: [{ path, bytes }]. secrets: [[name, value]]. Returns one line per problem.
 export function findProblems(files, secrets) {
   const problems = [];
@@ -38,7 +49,7 @@ export function findProblems(files, secrets) {
       problems.push(`${label}: an .env file would be committed (it holds the signing keys)`);
       continue;
     }
-    if (AMO_KEY_PATTERN.test(bytes.toString('latin1')) || AMO_KEY_PATTERN.test(bytes.toString('utf16le'))) {
+    if (AMO_KEY_PATTERN.test(bytes.toString('latin1')) || AMO_KEY_PATTERN.test(utf16Text(bytes))) {
       problems.push(`${label}: contains something shaped like a Mozilla add-ons API key (user:<number>:<number>)`);
     }
     for (const [name, value] of known) {

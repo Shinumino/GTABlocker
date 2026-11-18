@@ -20,6 +20,7 @@ import { Marionette } from './marionette.mjs';
 import {
   PROFILE_PREFIX, ProfileProcesses, stopAndRemove, sweepStaleProfiles, writeOwner, removeProfile,
 } from './firefox-process.mjs';
+import { assertNoWaitingUpdate, defaultRoots } from '../../tools/firefox_update.mjs';
 
 export const FIREFOX_BIN = process.env.FIREFOX_BIN || 'C:\\Program Files\\Mozilla Firefox\\firefox.exe';
 
@@ -83,7 +84,13 @@ async function waitFor(what, timeoutMs, probe) {
   throw new Error(`timed out after ${timeoutMs} ms waiting for ${what}${lastError ? ` (${lastError.message})` : ''}`);
 }
 
-export async function startFirefox({ prefs = {}, firefoxBin = FIREFOX_BIN, startTimeoutMs = 30_000 } = {}) {
+export async function startFirefox({
+  prefs = {}, firefoxBin = FIREFOX_BIN, startTimeoutMs = 30_000, updateRoots = defaultRoots(),
+} = {}) {
+  // First of all: a Firefox started while an update waits installs that update into the user's
+  // Firefox (tools/firefox_update.mjs). Nothing is created or started before this check.
+  assertNoWaitingUpdate(updateRoots);
+
   // Profiles left by a run that died (Ctrl+C, a crash) are stopped and deleted first.
   const swept = await sweepStaleProfiles();
   if (swept.length > 0) console.warn(`removed ${swept.length} test profile(s) left by an earlier run: ${swept.join(', ')}`);

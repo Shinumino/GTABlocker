@@ -1,9 +1,10 @@
-// The mutation pass for step 1: break one rule at a time in a fresh copy of the project (in
-// %TEMP%gtab-mutants, never this folder), run the tests that should catch it, and report red or
+// The mutation pass: break one rule at a time in a fresh copy of the project (in
+// %TEMP%\gtab-mutants, never this folder), run the tests that should catch it, and report red or
 // green. A test that has only ever been green has not proved anything; this is how each one is
-// seen red. Results: docs/mutation-pass-step1.md.
+// seen red. M = step 1 (the harness), S = step 2 (matching). Results:
+// docs/mutation-pass-step1.md and docs/mutation-pass-step2.md.
 //
-//   node tools/mutation-pass.mjs              baseline, then every break (about 7 minutes)
+//   node tools/mutation-pass.mjs              baseline, then every break (about 10 minutes)
 //   node tools/mutation-pass.mjs M05 M58b     only these (add "base" for the baseline)
 //
 // Each edit must match its file exactly once, or the break is reported NOT APPLIED: when the
@@ -26,7 +27,14 @@ const T = {
   proc: 'tests/micro/profile-processes.test.mjs', ext: 'tests/micro/extension-rules.test.mjs',
   usefx: 'tests/micro/browser-test.test.mjs',
   loads: 'tests/macro/extension-loads.test.mjs', cleanup: 'tests/macro/harness-cleanup.test.mjs',
+  matcher: 'tests/micro/matcher.test.mjs', content: 'tests/micro/content-script.test.mjs',
+  source: 'tests/micro/source-text.test.mjs', update: 'tests/micro/firefox-update.test.mjs',
+  parity: 'tests/macro/matcher-in-firefox.test.mjs',
 };
+
+// The line in content.js that marks the page; several breaks remove or follow it.
+const MARKER_LINE = "  document.documentElement.setAttribute('data-gta-blocker', matcher.entries.length > 0 ? 'ready' : 'error');";
+const MATCHER = 'extension/lib/matcher.js';
 
 const M = [
   ['M01', 'Marionette length prefix counts UTF-8 bytes', 'prefix counts characters', 'tests/support/marionette.mjs',
@@ -77,7 +85,7 @@ const M = [
   ['M23', 'a git failure fails the check', 'swallow git errors', 'tools/repo_rules.mjs',
     [['  if (result.error || result.status !== 0) {\n    const why', '  if (false) {\n    const why']], [T.repo]],
   ['M24', 'an API key shape is found in UTF-16', 'latin1 only', 'tools/repo_rules.mjs',
-    [[" || AMO_KEY_PATTERN.test(bytes.toString('utf16le'))", '']], [T.repo]],
+    [[' || AMO_KEY_PATTERN.test(utf16Text(bytes))', '']], [T.repo]],
   ['M25', 'the command exits 1 on a problem', 'exit 0 on problems', 'tools/check_repo.mjs',
     [["make a new one on addons.mozilla.org.');\n  process.exit(1);", "make a new one on addons.mozilla.org.');\n  process.exit(0);"]], [T.repo]],
   ['M26', 'a git failure says what to do', 'rethrow (stack trace)', 'tools/check_repo.mjs',
@@ -138,11 +146,11 @@ const M = [
   ['M53', 'the fixture server closes even when quit throws', 'no finally', 'tests/support/browser-test.mjs',
     [['    try {\n      await session.firefox?.quit();\n    } finally {\n      await session.fixtures?.close();\n    }', '    await session.firefox?.quit();\n    await session.fixtures?.close();']], [T.usefx]],
   ['M54', 'no extension code reaches the network', 'add a fetch', 'extension/content.js',
-    [["document.documentElement.setAttribute('data-gta-blocker', 'ready');", "document.documentElement.setAttribute('data-gta-blocker', 'ready');\nfetch('https://example.com/');"]], [T.ext]],
+    [[MARKER_LINE, `${MARKER_LINE}\n  fetch('https://example.com/');`]], [T.ext]],
   ['M55', 'no unagreed permission', 'ask for "tabs"', 'extension/manifest.json',
     [['"manifest_version": 3,', '"manifest_version": 3,\n  "permissions": ["tabs"],']], [T.ext]],
   ['M56', 'the content script runs on a page', 'remove the marker line', 'extension/content.js',
-    [["document.documentElement.setAttribute('data-gta-blocker', 'ready');", '']], [T.loads]],
+    [[MARKER_LINE, '']], [T.loads]],
   ['M57', 'test pages never come from the internet', 'drop network.dns.forceResolve', 'tests/support/firefox.mjs',
     [["  'network.dns.forceResolve': '127.0.0.1',\n", '']], [T.loads]],
   ['M58', 'a restarted browser is still tracked', 'drop the lock AND the lineage', 'tests/support/firefox-process.mjs',
@@ -151,6 +159,94 @@ const M = [
     [["    if (p && p.name.toLowerCase() === 'firefox.exe') take(p);", ''], ['      if (ours.has(p.pid) || !isOurChild(p, ours, known, alive, now)) continue;', '      if (true) continue;']], [T.cleanup]],
   ['M59', 'quit stops what did not stop by itself', 'never kill', 'tests/support/firefox-process.mjs',
     [['      kill(left);\n', '']], [T.cleanup]],
+
+  // Step 2: matching.
+  ['S01', 'full-width letters count as normal ones', 'drop NFKC on the text', MATCHER,
+    [["      .replace(SYMBOL, symbolAsGap)\n      .normalize('NFKC')\n", '      .replace(SYMBOL, symbolAsGap)\n']], [T.matcher]],
+  ['S02', 'invisible characters are removed from the text', 'drop the INVISIBLE replace', MATCHER,
+    [["      .replace(INVISIBLE, '')\n      .replace(/&/g, ' and ');", "      .replace(/&/g, ' and ');"]], [T.matcher]],
+  ['S03', 'every format and default-ignorable character counts as invisible', 'go back to a short hand-written list', MATCHER,
+    [['const INVISIBLE = /[\\p{Cf}\\p{DI}]/gu;', 'const INVISIBLE = /[\\u{AD}\\u{200B}-\\u{200F}\\u{FEFF}]/gu;']], [T.matcher]],
+  ['S04', 'piles of combining marks cannot slow normalization', 'keep the mark piles', MATCHER,
+    [["      .replace(MARK_PILE, '')\n", '']], [T.matcher]],
+  ['S05', 'accents on Latin letters do not matter', 'keep the accents', MATCHER,
+    [["      .replace(ACCENT, '')\n", '']], [T.matcher]],
+  ['S06', 'marks that are part of a letter stay (Japanese, Devanagari)', 'strip every mark', MATCHER,
+    [['const ACCENT = /(?<=[\\p{Script=Latin}\\p{Script=Greek}\\p{Script=Cyrillic}])\\p{M}+/gu;', 'const ACCENT = /\\p{M}+/gu;']], [T.matcher]],
+  ['S07', 'camel case is split (#ViceCity, PlayGTA)', 'drop the split', MATCHER,
+    [["    if (camel) s = s.replace(CAMEL, '$1 $2');", '']], [T.matcher]],
+  ['S08', 'case never matters (gTA 6, YouTube)', 'read only the split text', MATCHER,
+    [['        const whole = prepare(text, false);\n        return whole === split ? null : first(whole);', '        return null;']], [T.matcher]],
+  ['S09', '"&" means "and"', 'leave & as punctuation', MATCHER,
+    [["\n      .replace(/&/g, ' and ');", '\n      ;']], [T.matcher]],
+  ['S10', 'trademark signs are gaps, not letters', 'let NFKC turn them into TM', MATCHER,
+    [['      .replace(SYMBOL, symbolAsGap)\n', '']], [T.matcher]],
+  ['S11', 'German sharp s equals ss', 'drop the fold', MATCHER,
+    [["      .replace(/\\u{DF}/gu, 'ss') // German sharp s\n", '']], [T.matcher]],
+  ['S12', 'Greek final sigma equals sigma', 'drop the fold', MATCHER,
+    [["      .replace(/\\u{3C2}/gu, '\\u{3C3}') // Greek final sigma\n", '']], [T.matcher]],
+  ['S13', 'any run of gap characters becomes one space', 'do not collapse gaps', MATCHER,
+    [["      .replace(GAP_RUN, ' ');", '      ;']], [T.matcher]],
+  ['S14', 'the words of an entry may be written together', 'require a space between them', MATCHER,
+    [["words.map(literal).join(' ?')", "words.map(literal).join(' ')"]], [T.matcher]],
+  ['S15', 'a match starts at a word start', 'drop the start boundary', MATCHER,
+    [["(before ? `(?<!${before})` : '')", "''"]], [T.matcher]],
+  ['S16', 'a match ends at a word end (unless *)', 'drop the end boundary', MATCHER,
+    [["(after ? `(?!${after})` : '')", "''"]], [T.matcher]],
+  ['S17', 'a letter of another script ends a word (我在玩GTA5)', 'any letter continues a word', MATCHER,
+    [['      if (test.test(ch)) return `[\\\\p{Script=${name}}\\\\p{M}]`;', '      if (test.test(ch)) return `[\\\\p{L}\\\\p{M}]`;']], [T.matcher]],
+  ['S17b', 'a digit ends a word (Leonida2026)', 'digits continue a word', MATCHER,
+    [['      if (test.test(ch)) return `[\\\\p{Script=${name}}\\\\p{M}]`;', '      if (test.test(ch)) return `[\\\\p{Script=${name}}\\\\p{M}\\\\p{N}]`;']], [T.matcher]],
+  ['S17c', 'scripts without spaces have no word ends', 'give them a boundary', MATCHER,
+    [['    return null;\n  }\n\n  // A trademark-like sign', "    return '[\\\\p{L}]';\n  }\n\n  // A trademark-like sign"]], [T.matcher]],
+  ['S18', 'what reaches the pattern is escaped (second lock)', 'drop literal()', MATCHER,
+    [['    return word.replace(', '    return word; word.replace(']], [T.matcher]],
+  ['S19', 'a star is read after normalizing (full-width, invisible)', 'look for it before', MATCHER,
+    [["    let text = entry.normalize('NFKC').replace(INVISIBLE, '').trim();", '    let text = entry.trim();']], [T.matcher]],
+  ['S20', 'a star anywhere but the end is refused', 'allow it', MATCHER,
+    [["    if (text.includes('*')) return { code: 'star-not-at-end' };\n", '']], [T.matcher]],
+  ['S21', 'the length is measured after normalizing', 'measure the raw entry', MATCHER,
+    [["    if ([...joined].length > LIMITS.maxLength) return { code: 'too-long' };", "    if (entry.trim().length > LIMITS.maxLength) return { code: 'too-long' };"]], [T.matcher]],
+  ['S22', '80 characters is allowed', 'refuse 80 too', MATCHER,
+    [["    if ([...joined].length > LIMITS.maxLength) return { code: 'too-long' };", "    if ([...joined].length >= LIMITS.maxLength) return { code: 'too-long' };"]], [T.matcher]],
+  ['S23', 'at most 10 words', 'drop the cap', MATCHER,
+    [["    if (words.length > LIMITS.maxWords) return { code: 'too-many-words' };\n", '']], [T.matcher]],
+  ['S24', '3 letters or digits, punctuation not counted', 'count characters', MATCHER,
+    [['(joined.match(LETTERS) || []).length < LIMITS.minChars', 'joined.length < LIMITS.minChars']], [T.matcher]],
+  ['S25', 'repeats and refused entries take no place', 'count them against the cap', MATCHER,
+    [["      if (!code && accepted.length >= LIMITS.maxEntries) code = 'list-full';", "      if (!code && accepted.length + rejected.length >= LIMITS.maxEntries) code = 'list-full';"]], [T.matcher]],
+  ['S26', 'a repeat is reported, with what it repeats', 'drop it silently', MATCHER,
+    [["      if (!code && seen.has(parsed.key)) code = 'duplicate';", '      if (!code && seen.has(parsed.key)) return;']], [T.matcher]],
+  ['S27', 'a match names the entry as written', 'name the normalized key', MATCHER,
+    [['      entry: entry.trim(),', '      entry: joined,']], [T.matcher]],
+  ['S28', 'blank lines are skipped, not refused', 'refuse them', MATCHER,
+    [["    if (text === '') return { blank: true };", "    if (text === '') return { code: 'too-short' };"]], [T.matcher]],
+  ['S29', 'the first entry in the list wins a tie', 'reverse the list order', MATCHER,
+    [["accepted.map((a) => `(${a.pattern})`).join('|')", "accepted.map((a) => `(${a.pattern})`).reverse().join('|')"]], [T.matcher]],
+  ['S30', 'a GtaBlocker reachable only through the page is not ours', 'take any GtaBlocker', MATCHER,
+    [["  const ns = Object.hasOwn(root, 'GtaBlocker') ? root.GtaBlocker : (root.GtaBlocker = {});", '  const ns = root.GtaBlocker || (root.GtaBlocker = {});']], [T.matcher]],
+  ['S31', 'the page is marked ready only after the matcher compiled', 'mark it ready at once', 'extension/content.js',
+    [[`  const matcher = GtaBlocker.matcher.compile(GtaBlocker.matcher.DEFAULT_ENTRIES);\n${MARKER_LINE}`, "  document.documentElement.setAttribute('data-gta-blocker', 'ready');"]], [T.content]],
+  ['S32', 'content.js leaves nothing in the shared scope', 'unwrap it', 'extension/content.js',
+    [["(function () {\n  'use strict';\n", ''], ['})();\n', '']], [T.content]],
+  ['S33', 'the manifest loads the matcher before content.js', 'swap the order', 'extension/manifest.json',
+    [['"js": ["lib/matcher.js", "content.js"],', '"js": ["content.js", "lib/matcher.js"],']], [T.ext]],
+  ['S34', 'no file holds a direction-changing character', 'plant a raw U+202E in a comment', 'extension/content.js',
+    [['(function () {', '// \u{202E}\n(function () {']], [T.source]],
+  ['S35', 'every waiting update state is caught', 'catch only "pending"', 'tools/firefox_update.mjs',
+    [['const WAITING = /^(pending|pending-service|pending-elevate|applied|applied-service|applying)\\b/;', 'const WAITING = /^(pending)\\b/;']], [T.update]],
+  ['S36', 'the older update folder is checked too', 'skip %LOCALAPPDATA%', 'tools/firefox_update.mjs',
+    [["    ...(roots.localAppData ? listDirs(path.join(roots.localAppData, 'Mozilla', 'updates')) : []),\n", '']], [T.update]],
+  ['S37', 'no test Firefox starts while an update waits', 'skip the check in startFirefox', 'tests/support/firefox.mjs',
+    [['  assertNoWaitingUpdate(updateRoots);\n', '']], [T.update]],
+  ['S38', 'run.cmd stops while an update waits', 'the check exits 0', 'tools/check_firefox_update.mjs',
+    [['  process.exit(1);', '  process.exit(0);']], [T.update]],
+  ['S39', 'the secret check never crashes Node on an odd slice', 'decode the slice directly', 'tools/repo_rules.mjs',
+    [['AMO_KEY_PATTERN.test(utf16Text(bytes))', "AMO_KEY_PATTERN.test(bytes.toString('utf16le'))"]], [T.repo]],
+  ['S40', 'the UTF-16 copy keeps every whole character', 'drop the last one', 'tools/repo_rules.mjs',
+    [['  const even = Buffer.alloc(bytes.length - (bytes.length % 2));', '  const even = Buffer.alloc(Math.max(0, bytes.length - (bytes.length % 2) - 2));']], [T.repo]],
+  ['S41', 'Firefox applies the same rules (macro parity)', 'drop the camel split', MATCHER,
+    [["    if (camel) s = s.replace(CAMEL, '$1 $2');", '']], [T.parity]],
 ];
 
 function copyProject(dest) {

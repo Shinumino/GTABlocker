@@ -71,6 +71,11 @@ An unbroken copy was green first, so every red here comes from the break.
 | M58b | a restarted browser is still tracked | drop the lock AND every child link | quit stops a Firefox that restarted itself... | with all three paths gone, the restarted browser escapes and the test sees it. The escaped browser was then stopped by the real sweep |
 | M59 | quit stops what did not stop by itself | never kill | quit stops a Firefox that restarted itself... | nobody asks the restarted browser to quit |
 
+Rerun in step 2 (same day): M24, M54 and M56 had to follow the code (the UTF-16 check now goes
+through `utf16Text`, and the marker line in `content.js` changed); the script reported them NOT
+APPLIED until their edits were updated, then all three went red again. The rest of the list
+was red again without changes.
+
 Not covered by a break, and why:
 - The WMI and Restart Manager queries themselves (`readProcessTable`): the macro tests run
   them for real on every start and stop, and M58b shows the end-to-end result.
