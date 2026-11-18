@@ -1,0 +1,13 @@
+{
+  "name": "gta-blocker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Firefox extension that covers anything about GTA on the pages you visit: pictures get a dog or cat photo, text gets a short note.",
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "web-ext": "10.8.0"
+  }
+}

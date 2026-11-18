@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "GTA Blocker",
+  "version": "0.1.0",
+  "description": "Covers anything about GTA on the pages you visit: pictures get a dog or cat photo, text gets a short note.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{b5f8e9f0-9312-4fa5-90f0-2c21a45ed256}",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
+}

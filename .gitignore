@@ -1,0 +1,8 @@
+node_modules/
+# web-ext build and sign output
+web-ext-artifacts/
+# AMO signing keys live here (WEB_EXT_API_KEY / WEB_EXT_API_SECRET); tools/check_repo.mjs
+# also fails if any .env file is ever picked up, because an ignore line alone is a promise.
+.env
+.env.*
+!.env.example
