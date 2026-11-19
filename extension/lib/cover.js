@@ -27,11 +27,15 @@
   const CARD_TAGS = new Set(['article', 'li', 'tr', 'figure', 'dd', 'details']);
   const CARD_ROLES = new Set(['article', 'listitem', 'row', 'gridcell', 'option', 'treeitem']);
   // Custom elements named like a card: ytd-rich-item-renderer, ytd-comment-thread-renderer,
-  // search-result, shreddit-post, reddit-comment...
-  const CARD_NAME = /-(renderer|card|item|post|tile|result|comment|entry|row|cell)$|^(shreddit|reddit)-(post|comment)/;
+  // search-result, shreddit-post, reddit-comment... and YouTube's newer "lockup" cards
+  // (yt-lockup-view-model, ytm-shorts-lockup-view-model): without them a Short's title line was
+  // covered and its GTA picture showed (user report, 2026-11-18).
+  const CARD_NAME = /-(renderer|card|item|post|tile|result|comment|entry|row|cell|lockup)$|-lockup-view-model$|^(shreddit|reddit)-(post|comment)/;
   // A class token that names a card ("comment", "video-card", "search_result"). Whole tokens or
   // their last part only: "post-title" is the title of a post, not the post.
   const CARD_CLASS = /(^|[-_])(card|post|comment|tile|item|result|entry|tweet|story)$/i;
+  // The same last word written in camelCase ("ytGridShelfViewModelGridShelfItem", "videoCard").
+  const CARD_CAMEL = /[a-z0-9](Card|Post|Comment|Tile|Item|Result|Entry|Tweet|Story)$/;
   const MAX_SHARE = 0.6;
   const HIDDEN_TITLE = 'Hidden page';
 
@@ -57,7 +61,7 @@
   function isCard(e) {
     return CARD_TAGS.has(e.tag) || (e.role != null && CARD_ROLES.has(e.role))
       || (e.custom === true && CARD_NAME.test(e.tag))
-      || (typeof e.cls === 'string' && e.cls.split(/\s+/).some((token) => CARD_CLASS.test(token)));
+      || (typeof e.cls === 'string' && e.cls.split(/\s+/).some((token) => CARD_CLASS.test(token) || CARD_CAMEL.test(token)));
   }
 
   function tooBig(e, view) {
@@ -65,16 +69,26 @@
   }
 
   // The index in `chain` of the box to cover, or -1 when there is none below the page itself.
-  // Only a card is held to the 60% limit (a "card" that big is really the whole feed); the
-  // nearest block is covered at any size, since a paragraph taller than the screen is still the
-  // thing about GTA (found in review, 2026-11-18).
+  // A card is held to the 60% limit (a "card" that big is really the whole feed). Without a
+  // card, the block that holds the text (past the inline parts of its line) is covered at any
+  // size, since a paragraph taller than the screen is still the thing about GTA (review,
+  // 2026-11-18); a box reached by climbing past that block is held to the 60% limit too: on a
+  // Reddit search the climb went through a shadow tree and wrappers with no box of their own
+  // up to shreddit-app, the whole page, and striped it from edge to edge (user report,
+  // 2026-11-18). With nothing small enough, that match is not covered at all.
   function chooseBox(chain, view) {
     for (let i = 0; i < chain.length && !NEVER.has(chain[i].tag); i++) {
       const e = chain[i];
       if (isCard(e) && canCarry(e) && !tooBig(e, view)) return i;
     }
+    // The text's own block: past the inline parts of its line (b, a, span...). A site's own
+    // (custom) element is never part of a line, even when it is inline by default: Reddit's
+    // hidden screen-reader title sat under shreddit-app with only such elements between, and
+    // the app counted as the text's own block (user report, 2026-11-18).
+    let own = 0;
+    while (own < chain.length && chain[own].display === 'inline' && chain[own].custom !== true) own++;
     for (let i = 0; i < chain.length && !NEVER.has(chain[i].tag); i++) {
-      if (canCarry(chain[i])) return i;
+      if (canCarry(chain[i]) && (i <= own || !tooBig(chain[i], view))) return i;
     }
     return -1;
   }

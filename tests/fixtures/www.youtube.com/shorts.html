@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Search results (test fixture)</title>
+<!-- A stand-in written for the tests, not a copy of YouTube: a Shorts shelf shaped like the one
+     YouTube served on 2026-11-18 (a "lockup" element holding the picture and, below it, the
+     title). The pictures have no words of their own: only the title says GTA. -->
+<style>
+  body { margin: 0; font: 14px/20px sans-serif; background: #0f0f0f; color: #fff; width: 1300px; }
+  .ytGridShelfViewModelGridShelfRow { display: flex; gap: 16px; padding: 16px; }
+  .ytGridShelfViewModelGridShelfItem { display: flex; width: 237px; }
+  ytm-shorts-lockup-view-model-v2 { display: block; position: relative; width: 237px; }
+  ytm-shorts-lockup-view-model { display: inline-block; position: relative; width: 237px; }
+  .thumb { display: block; width: 237px; height: 356px; background: #556; border-radius: 12px; }
+  .shortsLockupViewModelHostOutsideMetadata { position: relative; display: block; padding: 4px 0; }
+  h3 { display: flow-root; margin: 0; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="ytGridShelfViewModelGridShelfRow ytd-item-section-renderer">
+  <div class="ytGridShelfViewModelGridShelfItem"><ytm-shorts-lockup-view-model-v2><ytm-shorts-lockup-view-model class="shortsLockupViewModelHost" id="s-gta">
+    <a href="#s-gta-open"><img class="thumb" id="s-gta-pic" alt=""></a>
+    <div class="shortsLockupViewModelHostOutsideMetadata"><div><h3 class="shortsLockupViewModelHostMetadataTitle" id="s-gta-title">GTA 6 has TONS OF BUGS #gta6</h3><div>18K views</div></div></div>
+  </ytm-shorts-lockup-view-model></ytm-shorts-lockup-view-model-v2></div>
+  <div class="ytGridShelfViewModelGridShelfItem"><ytm-shorts-lockup-view-model-v2><ytm-shorts-lockup-view-model class="shortsLockupViewModelHost" id="s-cat">
+    <a href="#s-cat-open"><img class="thumb" alt=""></a>
+    <div class="shortsLockupViewModelHostOutsideMetadata"><div><h3 class="shortsLockupViewModelHostMetadataTitle">A cat meets a cucumber</h3><div>2M views</div></div></div>
+  </ytm-shorts-lockup-view-model></ytm-shorts-lockup-view-model-v2></div>
+</div>
+</body>
+</html>

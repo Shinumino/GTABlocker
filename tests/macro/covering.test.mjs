@@ -238,3 +238,13 @@ test('2,000 tiles at once: all 200 GTA ones are covered within 5 seconds', async
   assert.ok(elapsed < 5_000, `took ${elapsed} ms`);
   assert.equal(await firefox.evaluate("return document.querySelectorAll('li:not([data-gta-cover])').length"), 1800);
 });
+
+test("a YouTube Short is covered whole, its picture too, not only its title", async () => {
+  // User report, 2026-11-18: on the Shorts shelf only each title line was covered, and the
+  // GTA picture above it showed. The fixture is shaped like the shelf YouTube served that day.
+  const { firefox, fixtures } = session;
+  await firefox.navigate(fixtures.url('www.youtube.com', '/shorts.html'));
+  await firefox.waitForPage('the extension to finish its first look', "return document.documentElement.getAttribute('data-gta-blocker') === 'ready'");
+  assert.deepEqual(await covers(), [['s-gta', 'gta*', 'l']]);
+  assert.equal(await firefox.evaluate("return document.getElementById('s-gta-pic').checkVisibility({ visibilityProperty: true })"), false, 'the picture is hidden under the cover');
+});

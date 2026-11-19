@@ -447,6 +447,17 @@ const M = [
     [["    if (area !== 'local' || !changes.switch) return;", '    return;']], [T.edges]],
   ['Q53', 'no permission but storage', 'ask for activeTab again', 'extension/manifest.json',
     [['    "storage"\n  ],', '    "storage",\n    "activeTab"\n  ],']], [T.ext]],
+  // After step 4: the user's reports from the test Firefox (YouTube Shorts, a Reddit search).
+  ['R01', 'a "lockup" element (YouTube) is a card', 'not any more', COVERJS,
+    [['|cell|lockup)$|-lockup-view-model$|^(shreddit|reddit)', '|cell)$|^(shreddit|reddit)']], [T.rules, T.cov]],
+  ['R02', 'a camelCase class names a card', 'never', COVERJS,
+    [["  const CARD_CAMEL = /[a-z0-9](Card|Post|Comment|Tile|Item|Result|Entry|Tweet|Story)$/;", "  const CARD_CAMEL = /^$/;"]], [T.rules]],
+  ['R03', 'a box reached by climbing is held to 60% of the screen', 'any size', COVERJS,
+    [['      if (canCarry(chain[i]) && (i <= own || !tooBig(chain[i], view))) return i;', '      if (canCarry(chain[i])) return i;']], [T.rules]],
+  ['R04', "a site's own element is never part of a line", 'climb through it', COVERJS,
+    [["    while (own < chain.length && chain[own].display === 'inline' && chain[own].custom !== true) own++;", "    while (own < chain.length && chain[own].display === 'inline') own++;"]], [T.rules]],
+  ['R05', "the text's own block is covered at any size", 'hold it to 60% too', COVERJS,
+    [['      if (canCarry(chain[i]) && (i <= own || !tooBig(chain[i], view))) return i;', '      if (canCarry(chain[i]) && !tooBig(chain[i], view)) return i;']], [T.rules, T.hard]],
 ];
 
 function copyProject(dest) {

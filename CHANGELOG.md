@@ -45,5 +45,8 @@ Not installed in your Firefox yet (that is step 7). In the test Firefox (`run.cm
 - If you remove or reload the add-on while a page is fully covered, the next copy clears the
   old cover; after removing it for good, reload the page.
 - Covers made by your own words say "a word from your list", so a site cannot read your list.
-- Not there yet: dog and cat photos on pictures, and rules made for YouTube, Reddit, X, Google
-  and Instagram.
+- **Fixed after trying it:** a YouTube Short about GTA is now covered whole, its picture too
+  (only its title line was); a Reddit search for GTA no longer covers the whole site in
+  stripes (a hidden screen-reader line made the add-on cover Reddit's whole page).
+- Not there yet: dog and cat photos on pictures, and rules made for YouTube (the Shorts player:
+  cover, pause and mute), Reddit, X, Google and Instagram.

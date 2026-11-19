@@ -155,3 +155,69 @@ test('a page is about GTA when its title matches', () => {
 test('the tab says "Hidden page" while a whole page is covered', () => {
   assert.equal(cover.HIDDEN_TITLE, 'Hidden page');
 });
+
+test("YouTube's Shorts card (a \"lockup\") is covered whole, picture and title, not only its title", () => {
+  // The chain from a Shorts title up, as YouTube built it on 2026-11-18 (read from the live
+  // search page): only the title line was covered and the GTA picture showed (user report).
+  const chain = [
+    el('h3', { display: 'flow-root', w: 201, h: 44, cls: 'shortsLockupViewModelHostMetadataTitle shortsLockupViewModelHostOutsideMetadataTitle' }),
+    el('div', { w: 201, h: 68 }),
+    el('div', { w: 237, h: 76, position: 'relative', cls: 'shortsLockupViewModelHostOutsideMetadata shortsLockupViewModelHostMetadataRounded' }),
+    el('ytm-shorts-lockup-view-model', { custom: true, display: 'inline-block', position: 'relative', w: 237, h: 432, cls: 'shortsLockupViewModelHost' }),
+    el('ytm-shorts-lockup-view-model-v2', { custom: true, position: 'relative', w: 237, h: 435 }),
+    el('div', { display: 'flex', w: 237, h: 435, cls: 'ytGridShelfViewModelGridShelfItem' }),
+    el('div', { display: 'flex', w: 1250, h: 435, cls: 'ytGridShelfViewModelGridShelfRow ytd-item-section-renderer grid-shelf-with-top-margin' }),
+    ...page,
+  ];
+  assert.equal(pick(chain), 3);
+  // YouTube's video card of the same family.
+  assert.equal(pick([el('h3'), el('div'), el('yt-lockup-view-model', { custom: true, w: 400, h: 300 }), ...page]), 2);
+});
+
+test('a class written in camelCase names a card the same way ("ShelfItem", "videoCard")', () => {
+  for (const cls of ['ytGridShelfViewModelGridShelfItem', 'videoCard', 'searchResult', 'feedPost x']) {
+    assert.equal(pick([el('p'), el('div', { cls }), ...page]), 1, cls);
+  }
+  // Only the last word counts, and only those words: a row, a list, a title, a menu are not cards.
+  for (const cls of ['ytGridShelfViewModelGridShelfRow', 'itemList', 'cardTitle', 'postHeader', 'ItemS']) {
+    assert.notEqual(pick([el('p'), el('div', { cls }), ...page]), 1, cls);
+  }
+});
+
+test('a climb past the block that holds the text never covers a page-wide container (Reddit)', () => {
+  // User report, 2026-11-18: a Reddit search was striped from edge to edge. The match sat in a
+  // shadow tree, its wrappers had no box of their own, and the climb reached shreddit-app, the
+  // whole page, which the fallback covered at any size.
+  const chain = [
+    el('span', { inShadow: true, display: 'inline' }),
+    el('div', { inShadow: true, w: 500, h: 20 }),
+    el('faceplate-tracker', { custom: true, display: 'contents' }),
+    el('search-dynamic-id-cache-controller', { custom: true, display: 'inline' }),
+    el('shreddit-app', { custom: true, w: 1280, h: 4000 }),
+    ...page,
+  ];
+  assert.equal(pick(chain), -1);
+  // A box of a sensible size on the way up is covered instead.
+  const withBox = [chain[0], chain[1], chain[2], el('div', { w: 600, h: 200 }), chain[4], ...page];
+  assert.equal(pick(withBox), 3);
+});
+
+test("the block that holds the text is still covered at any size, even when the word sits in a bold part", () => {
+  assert.equal(pick([el('b', { display: 'inline' }), el('a', { display: 'inline' }), el('p', { w: 800, h: 2000 }), ...page]), 2);
+  assert.equal(pick([el('p', { w: 800, h: 2000 }), ...page]), 0);
+});
+
+test("a site's own elements are never part of a line: the climb stops at them (Reddit's hidden title)", () => {
+  // From the saved Reddit page (2026-11-18): the screen-reader message "gta - Reddit Search!"
+  // sits under shreddit-app with only Reddit's custom elements between, all inline by default,
+  // so the app counted as the text's own block and was covered at any size.
+  const chain = [
+    el('span', { display: 'inline' }),
+    el('faceplate-screen-reader-content', { custom: true, display: 'inline', w: 1, h: 1 }),
+    el('screen-reader-alert-outlet', { custom: true, display: 'inline' }),
+    el('shreddit-async-loader', { custom: true, display: 'inline' }),
+    el('shreddit-app', { custom: true, w: 1584, h: 1634 }),
+    ...page,
+  ];
+  assert.equal(pick(chain), -1);
+});

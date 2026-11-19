@@ -197,8 +197,20 @@ mutation pass, before the next starts.
      popup with pointer actions whose origin is `browser.webextension-popup-browser` (switching
      into it is refused). Its `contentTitle` is readable from chrome. A fixed `moz-extension://`
      address comes from the pref `extensions.webextensions.uuids`. Checked on Firefox 160.
-5. The bundled dog and cat photos, with their licences.
+5. The bundled dog and cat photos, with their licences (decided with the user, 2026-11-18):
+   12 photos, 6 dogs and 6 cats, about 1 MB in all, from the WordPress.org Photo Directory
+   (CC0: any use, no credit needed; Unsplash's licence bans "compiling" and Fedora lists it as
+   a bad content licence, Pexels points apps to its online API, which we do not use); each
+   photo's page and licence recorded in a LICENSES file. The same item always gets the same
+   photo (chosen from its text), so a tile keeps its animal after a reload or a scroll. The
+   look (photo over the whole tile or only the picture, where the note sits) is decided in a
+   shinu-design preview first; the photos themselves are picked by the user from candidates.
 6. Site rules, one site per step: YouTube (with the Shorts player), Reddit, X, Google, Instagram.
+   YouTube Shorts, decided with the user 2026-11-18: a GTA Short gets a cover on the PLAYER
+   only, and is paused and muted; scrolling on to the next Short keeps working and that one
+   plays normally; no whole-page card on a Shorts page (its title being about GTA must not
+   bring it). After Show anyway or "Not about GTA" a paused video STAYS paused (the user's
+   choice, against the recommendation to resume it).
    If a site needs words of its own, give it its own matcher: adding them to the user's list
    would take places in the user's 200 and show up on their settings page as theirs. Move the
    site names now in the general rules (`shreddit|reddit` in CARD_NAME, `tweet` in

@@ -86,3 +86,16 @@ Not covered by a break, and why:
 - What the menu and the settings page look like: checked by eye against the agreed preview
   (`docs/design/menu-preview.html`), not by a test.
 - "Stays off after Firefox closes": a temporary add-on cannot outlive a restart.
+
+## After step 4: the user's reports (2026-11-18)
+
+Two bugs the user met in the test Firefox, fixed test-first (each test seen failing on the
+code before the fix), then broken on purpose: 5 breaks, 5 red.
+
+| # | Rule | Break | Turned red (one of the tests) |
+|---|---|---|---|
+| R01 | a "lockup" element (YouTube) is a card | not any more | a YouTube Short is covered whole, its picture too, not only its title |
+| R02 | a camelCase class names a card ("ShelfItem") | never | a class written in camelCase names a card the same way |
+| R03 | a box reached by climbing is held to 60% of the screen | any size | a climb past the block that holds the text never covers a page-wide container (Reddit) |
+| R04 | a site's own element is never part of a line | climb through it | a site's own elements are never part of a line (Reddit's hidden title) |
+| R05 | the text's own block is covered at any size | hold it to 60% too | a card taller than the screen is passed over; a paragraph is covered at any size |
