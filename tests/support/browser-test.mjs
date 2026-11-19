@@ -10,15 +10,18 @@ import { fileURLToPath } from 'node:url';
 import { startFirefox } from './firefox.mjs';
 import { startFixtureServer } from './fixtures.mjs';
 
-export const EXTENSION_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'extension');
+// GTAB_EXTENSION_DIR runs the macro tests against another copy of the extension: an older
+// one, to see a new test fail on the bug it was written for (the mutation pass and the review
+// fixes use it). Unset, it is this project's extension.
+export const EXTENSION_DIR = process.env.GTAB_EXTENSION_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'extension');
 
 // Returns an object whose `firefox` and `fixtures` are filled in before the first test runs.
 // `start` and `startServer` are seams for the harness's own tests only.
-export function useFirefox({ extensionDir, prefs, start = startFirefox, startServer = startFixtureServer } = {}) {
+export function useFirefox({ extensionDir, prefs, systemAccess, start = startFirefox, startServer = startFixtureServer } = {}) {
   const session = { firefox: null, fixtures: null };
   before(async () => {
     session.fixtures = await startServer();
-    session.firefox = await start({ prefs });
+    session.firefox = await start(systemAccess ? { prefs, systemAccess } : { prefs });
     if (extensionDir) await session.firefox.installExtension(extensionDir);
   });
   after(async () => {

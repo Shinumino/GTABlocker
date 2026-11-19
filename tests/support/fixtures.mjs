@@ -12,6 +12,12 @@ import { fileURLToPath } from 'node:url';
 
 export const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 
+// A page named *.slow.html is sent in two parts, with this pause where it says <!-- PAUSE -->:
+// a page still loading when covering starts (step 4's covering starts after the settings are
+// read, so a short page is always fully loaded by then).
+export const PAUSE_MS = 1000;
+const PAUSE = '<!-- PAUSE -->';
+
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -50,7 +56,14 @@ export async function startFixtureServer() {
       if (!file) throw new Error('outside fixtures');
       const body = await fs.readFile(file);
       res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
-      res.end(body);
+      const text = file.endsWith('.slow.html') ? body.toString('utf8') : null;
+      const at = text ? text.indexOf(PAUSE) : -1;
+      if (at === -1) {
+        res.end(body);
+      } else {
+        res.write(text.slice(0, at + PAUSE.length));
+        setTimeout(() => res.end(text.slice(at + PAUSE.length)), PAUSE_MS);
+      }
     } catch {
       res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
       res.end(`no fixture for ${host}${req.url}`);

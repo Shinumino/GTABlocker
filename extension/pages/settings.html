@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GTA Blocker settings</title>
+<link rel="stylesheet" href="pages.css">
+</head>
+<body class="settings">
+<main>
+  <div class="sh"><img src="../icons/icon.svg" alt=""><h1>GTA Blocker settings</h1></div>
+  <div class="sections">
+    <section class="sec" aria-labelledby="h-words">
+      <h2 id="h-words" tabindex="-1">Words that get covered <span class="n" id="n-words"></span></h2>
+      <p class="lead">Anything on a page that matches one of these gets covered. Capitals, accents and spacing do not matter.
+        End a word with * to cover every word starting with it: gta* covers GTA 6 and GTA Online.
+        Covers made by your own words say "a word from your list" on the page, so the page cannot read your list.</p>
+      <form class="add" id="add-form">
+        <input id="add-input" autocomplete="off" spellcheck="false" maxlength="200" placeholder="A word or phrase, like trevor philips" aria-label="Add a word or phrase" aria-describedby="word-msg">
+        <button class="btn gold" type="submit">Add</button>
+      </form>
+      <div id="words-box"></div>
+    </section>
+    <section class="sec" aria-labelledby="h-sites">
+      <h2 id="h-sites" tabindex="-1">Sites where it is off <span class="n" id="n-sites"></span></h2>
+      <p class="lead">Turned off from the toolbar menu. Nothing is covered on these sites until you turn them back on.</p>
+      <div id="sites-box"></div>
+    </section>
+    <section class="sec" aria-labelledby="h-reports">
+      <h2 id="h-reports" tabindex="-1">Your reports <span class="n" id="n-reports"></span></h2>
+      <p class="lead">Each "Not about GTA" and each "Report missed GTA" from the toolbar menu is kept here, only on this PC
+        (the last 50). Copy them and send them to Claude to make the covers better.</p>
+      <div id="reports-box"></div>
+    </section>
+  </div>
+</main>
+<dialog class="ask" id="ask" aria-labelledby="ask-h">
+  <h3 id="ask-h"></h3>
+  <p id="ask-p"></p>
+  <div class="row-actions">
+    <button type="button" class="btn" id="ask-no"></button>
+    <button type="button" class="btn danger" id="ask-yes"></button>
+  </div>
+</dialog>
+<script src="../lib/matcher.js"></script>
+<script src="../lib/settings.js"></script>
+<script src="settings-view.js"></script>
+<script src="dom.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>

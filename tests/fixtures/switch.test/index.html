@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A list of videos (switch test fixture)</title>
+<!-- Made up for the toolbar switch tests (step 4): three items about GTA (two match gta*, one
+     vice city) and two that are not. The page records the clicks it hears, so a test can prove
+     that a covered link is blocked and that it works again once covering is off. -->
+<style>
+  body { margin: 0; font: 14px/20px sans-serif; width: 800px; }
+  ul { list-style: none; margin: 0; padding: 16px; }
+  li { height: 60px; margin-bottom: 8px; }
+  a { display: block; height: 60px; }
+</style>
+</head>
+<body>
+<ul>
+  <li id="v-gta"><a id="v-gta-link" href="#gta-opened">GTA 6 trailer, every detail</a></li>
+  <li id="v-bread"><a href="#bread-opened">Making bread at home</a></li>
+  <li id="v-online"><a href="#online-opened">GTA Online: the winter update</a></li>
+  <li id="v-vice"><a href="#vice-opened">Vice City tour, all of it</a></li>
+  <li id="v-cat"><a href="#cat-opened">A cat and a cucumber</a></li>
+</ul>
+<script>
+  window.__clicks = [];
+  document.addEventListener('click', (e) => window.__clicks.push(e.target.id || e.target.localName));
+</script>
+</body>
+</html>

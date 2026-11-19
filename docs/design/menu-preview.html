@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GTA Blocker menu and settings, agreed preview</title>
+<!--
+  shinu-design preview for GTA Blocker step 4: the toolbar menu and the settings page, round 3.
+  Rounds 1 and 2 picked the look (all eight picks are in "Decided"); this round carries the fixes
+  from the blind design review and four open questions it raised. Colours come from the cover
+  (night blue #1B2233, backdrop #10141F, gold #E2B857 to do something, red #FF5C5C to remove).
+  The words are the product's own: the matcher's refusal reasons and built-in list verbatim, and
+  a cover's word is the list entry that matched (gta*), as in the real add-on. Made up: the
+  sites, the reports, the user's own words.
+-->
+<style>
+  :root {
+    --bg: #10141F; --surface: #1B2233; --raised: #232C42; --line: #2E3A55;
+    --text: #E8ECF4; --muted: #A9B3C7; --accent: #E2B857; --accent-ink: #1F1806;
+    --on: #5CC79A; --red: #FF5C5C; --info: #A9C4F5; --bad: #FFB4A8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid #FFFFFF; outline-offset: 2px; }
+  svg { display: block; }
+  .pg { display: none; }
+  [data-page="menu"] #menu-page, [data-page="settings"] #settings-page { display: block; }
+
+  .btn { border: 1px solid var(--line); background: var(--raised); border-radius: 8px; padding: 6px 12px;
+         cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.gold { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  .btn.gold:hover { filter: brightness(1.08); color: var(--accent-ink); }
+  .btn.red:hover, .icon-btn.red:hover { border-color: var(--red); color: var(--red); }
+  .btn svg { width: 16px; height: 16px; }
+  .icon-btn { border: 1px solid transparent; background: none; border-radius: 8px; width: 34px; height: 34px;
+              display: inline-grid; place-items: center; cursor: pointer; color: var(--muted); flex: none; }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .link-btn { border: 0; background: none; padding: 0 2px; cursor: pointer; color: var(--text); text-decoration: underline; font-weight: 600; }
+  .link-btn:hover { color: var(--accent); }
+  .tag { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
+         padding: 0 6px; margin-left: 6px; white-space: nowrap; }
+  .tag.yours { color: var(--info); border-color: rgba(169, 196, 245, .45); }
+  .msg { margin: 8px 0 0; }
+  .msg:empty { display: none; }
+  .msg.good { color: var(--on); }
+  .msg.bad { color: var(--bad); }
+  .msg.warn { color: var(--accent); }
+  .sr { position: absolute; left: -9999px; }
+
+  .switch { position: relative; width: 44px; height: 26px; border-radius: 999px; border: 1px solid var(--line);
+            background: #3A4560; cursor: pointer; flex: none; padding: 0; }
+  .switch .knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #E8ECF4; transition: left .15s; }
+  .switch[aria-checked="true"] { background: var(--on); border-color: var(--on); }
+  .switch[aria-checked="true"] .knob { left: 21px; }
+  .switch:disabled { opacity: .45; cursor: not-allowed; background: #3A4560; border-color: var(--line); }
+  .sw-word { width: 26px; font-weight: 600; font-size: 13px; color: var(--muted); }
+  .sw-word.on { color: var(--on); }
+  @media (prefers-reduced-motion: reduce) { .switch .knob { transition: none; } }
+
+  /* ================= the toolbar menu page ================= */
+  #menu-page { padding: 16px; }
+  .browser { position: relative; max-width: 1100px; margin: 0 auto; border: 1px solid #3A3F4B; border-radius: 10px; overflow: hidden;
+             background: #F5F6F8; min-height: 660px; }
+  .tb { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #2B2A33; color: #FBFBFE; }
+  .tb .dots { display: flex; gap: 6px; }
+  .tb .dots i { width: 22px; height: 22px; border-radius: 6px; background: #3B3A44; display: block; }
+  .urlbar { flex: 1; min-width: 0; background: #1C1B22; border-radius: 6px; padding: 5px 10px; color: #CFCFD8; font-size: 13px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ext { position: relative; width: 32px; height: 32px; border: 0; border-radius: 6px; background: none; cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .ext:hover, .ext[aria-expanded="true"] { background: #52525E; }
+  .ext .tile { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; background: #1B2233; color: #E8ECF4; }
+  .ext .tile svg { width: 14px; height: 14px; }
+  .badge { position: absolute; right: -2px; bottom: 0; min-width: 16px; height: 14px; border-radius: 4px; padding: 0 3px;
+           font: 700 10px/14px system-ui, sans-serif; text-align: center; background: var(--accent); color: var(--accent-ink); }
+  .badge.off { background: #5B5B66; color: #FBFBFE; }
+  .ext.dim .tile { opacity: .45; }
+
+  .site { color: #1A1E24; padding: 18px; display: grid; grid-template-columns: 240px 1fr; gap: 18px; }
+  .site .side { order: -1; }
+  .site h2 { font-size: 16px; margin: 0 0 12px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .tile-v { display: grid; gap: 6px; }
+  .thumb { aspect-ratio: 16 / 9; border-radius: 8px; background: linear-gradient(135deg, #C9D3E3, #E4E9F2); }
+  .tile-v b { font-size: 13px; }
+  .tile-v small { color: #5A6370; }
+  .comments { margin-top: 18px; display: grid; gap: 10px; }
+  .comment, .side .result { background: #FFFFFF; border: 1px solid #E1E5EB; border-radius: 8px; padding: 10px 12px; min-height: 58px; }
+  .side .result { margin-bottom: 10px; min-height: 64px; }
+  .cv { position: relative; }
+  .cv.covered { background: #1B2233 repeating-linear-gradient(135deg, transparent 0 14px, rgba(255, 255, 255, .045) 14px 28px);
+                border-color: transparent; border-radius: 8px; color: #E8ECF4; }
+  .cv.covered > * { visibility: hidden; }
+  .cv.covered::after { content: attr(data-note); position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+                       padding: 8px; font-weight: 700; white-space: pre-line; font-size: 13px; }
+
+  .popup { position: absolute; top: 46px; right: 8px; width: 340px; max-width: calc(100% - 16px); background: var(--surface);
+           color: var(--text); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 36px rgba(0, 0, 0, .45); padding: 14px; z-index: 5; }
+  .popup[hidden] { display: none; }
+  .ph { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ph .logo { width: 26px; height: 26px; border-radius: 7px; background: var(--raised); display: grid; place-items: center; color: var(--muted); }
+  .ph .logo svg { width: 16px; height: 16px; }
+  .ph b { font-size: 15px; }
+  .sw-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); cursor: pointer; }
+  .sw-row.waiting { cursor: default; }
+  .sw-row > div { flex: 1; min-width: 0; }
+  .sw-row small { display: block; color: var(--muted); }
+  .sw-row.waiting b { color: var(--muted); }
+  .state { color: var(--muted); margin: 10px 0 0; }
+  .count { font-weight: 700; margin: 12px 0 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .groups { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 236px; overflow-y: auto; }
+  .groups li { display: flex; align-items: center; gap: 8px; background: var(--raised); border-radius: 8px; padding: 6px 6px 6px 10px; min-height: 44px; }
+  .groups .gw { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .groups .gn { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .groups .btn { padding: 4px 9px; min-height: 30px; font-size: 13px; }
+  .groups li.done { background: none; border: 1px dashed var(--line); }
+  .groups li.done .gw { color: var(--muted); }
+  .hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  .miss { display: grid; gap: 6px; margin-top: 10px; }
+  .miss input { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+  .miss .row { display: flex; gap: 8px; }
+  .pfoot { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .pfoot .btn { font-size: 13px; }
+  .popup .msg { font-size: 13px; }
+
+  @media (max-width: 900px) { .site { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) { .grid { grid-template-columns: 1fr 1fr; } #menu-page { padding: 8px; } }
+
+  /* ================= the settings page ================= */
+  #settings-page main { max-width: 820px; margin: 0 auto; padding: 24px 16px 160px; }
+  .sh { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .sh .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); }
+  .sh .logo svg { width: 20px; height: 20px; }
+  .sh h1 { font-size: 22px; margin: 0; }
+  .sections { display: grid; gap: 18px; }
+  .sec { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .sec h2 { font-size: 17px; margin: 0 0 4px; }
+  .sec h2 .n { color: var(--muted); font-weight: 400; }
+  .sec .lead { color: var(--muted); margin: 0 0 14px; max-width: 70ch; }
+  .add { display: flex; gap: 8px; flex-wrap: wrap; }
+  .add input { flex: 1; min-width: 180px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+  .add input:focus-visible { outline-offset: 0; }
+  .wlist { list-style: none; margin: 12px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; }
+  .wlist li { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border-top: 1px solid var(--line); }
+  .wlist li:first-child { border-top: 0; }
+  .wlist li.new { background: rgba(92, 199, 154, .08); }
+  .wlist .w { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+  .sites { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .sites li { display: flex; align-items: center; gap: 8px; background: var(--raised); border-radius: 8px; padding: 6px 6px 6px 12px; }
+  .sites li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .empty { color: var(--muted); margin: 0; }
+  table.rep { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.rep th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.rep td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; overflow-wrap: anywhere; }
+  table.rep td.when { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); }
+  table.rep td.act { width: 40px; padding: 2px; }
+  @media (max-width: 600px) {
+    table.rep thead { display: none; }
+    table.rep tr { display: grid; grid-template-columns: 1fr auto; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    table.rep td { border: 0; padding: 1px 0; grid-column: 1; }
+    table.rep td.act { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+    table.rep td[data-label]::before { content: attr(data-label) ": "; color: var(--muted); }
+  }
+  dialog.ask { background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+               width: calc(100% - 32px); max-width: 420px; }
+  dialog.ask::backdrop { background: rgba(8, 10, 16, .7); }
+  dialog.ask h3 { margin: 0 0 8px; font-size: 17px; }
+  dialog.ask p { margin: 0 0 16px; color: var(--muted); }
+  dialog.ask .row-actions { justify-content: flex-end; }
+  .btn.danger { background: var(--red); border-color: var(--red); color: #1E0707; font-weight: 600; }
+  .btn.danger:hover { filter: brightness(1.08); color: #1E0707; }
+
+  /* ---- the switch panel: NOT part of any design, never ships ---- */
+  /* Bottom LEFT on the menu page (the add-on menu opens at the top right), right on settings. */
+  #pv { position: fixed; left: 16px; bottom: 16px; width: 310px; max-height: calc(100vh - 32px); overflow-y: auto; z-index: 2147483000;
+        background: #FFFFFF; color: #1A1E24; border: 2px dashed #8A93A3; border-radius: 12px; padding: 12px 14px;
+        font: 13px/1.4 system-ui, sans-serif; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+  [data-page="settings"] #pv { left: auto; right: 16px; }
+  #pv .pv-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  #pv .pv-head b { font-size: 14px; }
+  #pv small { color: #5A6370; }
+  #pv fieldset { border: 0; margin: 10px 0 0; padding: 0; }
+  #pv legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
+  #pv label { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+  #pv .pv-decided { margin: 10px 0 0; padding: 8px; background: #EEF2F6; border-radius: 6px; }
+  #pv .pv-clash { margin: 10px 0 0; padding: 8px; background: #FDE2E0; color: #8A1C12; border: 1px solid #E5A29B; border-radius: 6px; font-weight: 600; }
+  #pv .pv-decided ul { margin: 4px 0 0; padding-left: 18px; }
+  #pv button { font: inherit; border: 1px solid #C9CFD8; background: #F4F6F8; border-radius: 6px; padding: 3px 9px; cursor: pointer; color: #1A1E24; }
+  #pv .pv-open { display: none; border: 0; background: #fff; font-weight: 600; padding: 9px 14px; border-radius: 10px; }
+  #pv.min { width: auto; padding: 0; border-style: solid; }
+  #pv.min > :not(.pv-open) { display: none; }
+  #pv.min .pv-open { display: block; }
+  @media (max-width: 700px) { #pv { left: 16px; right: 16px; width: auto; max-height: 70vh; } #pv.min { left: auto; } }
+</style>
+</head>
+<body>
+
+<section id="menu-page" class="pg" aria-label="Toolbar menu">
+  <div class="browser">
+    <div class="tb">
+      <div class="dots"><i></i><i></i></div>
+      <div class="urlbar">youtube.com/results?search_query=new+music</div>
+      <button type="button" class="ext" id="ext" aria-expanded="true" aria-haspopup="true" aria-label="GTA Blocker">
+        <span class="tile" id="ext-tile"></span><span class="badge" id="badge"></span>
+      </button>
+    </div>
+    <div class="site">
+      <div>
+        <h2>Results</h2>
+        <div class="grid">
+          <div class="tile-v cv" id="c0"><div class="thumb"></div><b>GTA 6 trailer 3: every detail</b><small>GameSpotter, 1.2M views</small></div>
+          <div class="tile-v"><div class="thumb"></div><b>Lofi beats to study to</b><small>Chill Room, 4M views</small></div>
+          <div class="tile-v cv" id="c1"><div class="thumb"></div><b>GTA 6 map size compared</b><small>MapNerd, 880K views</small></div>
+          <div class="tile-v"><div class="thumb"></div><b>Making bread at home</b><small>Flour Power, 210K views</small></div>
+          <div class="tile-v"><div class="thumb"></div><b>Cats being weird, part 9</b><small>Whiskers, 3.1M views</small></div>
+          <div class="tile-v"><div class="thumb"></div><b>Night drive synthwave mix</b><small>Neon Hours, 990K views</small></div>
+        </div>
+        <div class="comments">
+          <div class="comment cv" id="c2"><b>@marina</b><div>gta 6 when, I am so ready</div></div>
+          <div class="comment cv" id="c3"><b>@okto</b><div>trevor philips is still the best character</div></div>
+          <div class="comment"><b>@lu</b><div>the bread one at 4:10 saved my weekend</div></div>
+        </div>
+      </div>
+      <div class="side">
+        <h2>Also searched</h2>
+        <div class="result cv" id="c4"><b>Vice City, Miami: a travel guide</b><div>Where to eat, the beaches and old Miami.</div></div>
+        <div class="result"><b>Best synth albums of the year</b><div>Twenty picks from the critics.</div></div>
+      </div>
+    </div>
+    <div class="popup" id="popup" role="dialog" aria-label="GTA Blocker menu"></div>
+  </div>
+</section>
+
+<section id="settings-page" class="pg" aria-label="Settings page">
+  <main>
+    <div class="sh"><span class="logo" id="sh-logo"></span><h1>GTA Blocker settings</h1></div>
+    <div class="sections">
+      <section class="sec" id="sec-words" aria-labelledby="h-words">
+        <h2 id="h-words" tabindex="-1">Words that get covered <span class="n" id="n-words"></span></h2>
+        <p class="lead">Anything on a page that matches one of these gets covered. Capitals, accents and spacing do not matter.
+          End a word with * to cover every word starting with it: gta* covers GTA 6 and GTA Online.
+          Covers made by your own words say "a word from your list" on the page, so the page cannot read your list.</p>
+        <div id="words-box"></div>
+      </section>
+      <section class="sec" id="sec-sites" aria-labelledby="h-sites">
+        <h2 id="h-sites" tabindex="-1">Sites where it is off <span class="n" id="n-sites"></span></h2>
+        <p class="lead">Turned off from the toolbar menu. Nothing is covered on these sites until you turn them back on.</p>
+        <div id="sites-box"></div>
+      </section>
+      <section class="sec" id="sec-reports" aria-labelledby="h-reports">
+        <h2 id="h-reports" tabindex="-1">Your reports <span class="n" id="n-reports"></span></h2>
+        <p class="lead">Each "Not about GTA" and each "Report missed GTA" from the toolbar menu is kept here, only on this PC
+          (the last 50). Copy them and send them to Claude to make the covers better.</p>
+        <div id="reports-box"></div>
+      </section>
+    </div>
+  </main>
+  <dialog class="ask" id="ask" aria-labelledby="ask-h">
+    <h3 id="ask-h"></h3>
+    <p id="ask-p"></p>
+    <div class="row-actions">
+      <button type="button" class="btn" id="ask-no"></button>
+      <button type="button" class="btn danger" id="ask-yes"></button>
+    </div>
+  </dialog>
+</section>
+
+<script>
+var PREVIEW = {
+  choices: [
+    { key: 'page', label: 'Go to a page', options: [['menu', 'Toolbar menu'], ['settings', 'Settings page']] },
+    { key: 'state', label: 'Show the menu as (to look at, not a choice)', options: [['on', 'On, 5 covered'], ['offsite', 'Off on this site'], ['offall', 'Off everywhere'], ['none', 'Nothing covered here']] },
+    { key: 'offlook', label: 'A. The icon when it is off', options: [['word', '"off" on it (picked, round 3)'], ['dim', 'Faded, no number (round 2, replaced)']] },
+    { key: 'waitrow', label: 'B. "On this site" while Everywhere is off', options: [['hide', 'Hidden until Everywhere is on (picked)'], ['fade', 'Shown faded, under Everywhere']] },
+    { key: 'ownrow', label: 'C. A cover from one of your own words', options: [['remove', '"Remove from my list" (picked)'], ['report', '"Not about GTA", like the built-in words']] },
+    { key: 'missbox', label: 'D. Report missed GTA', options: [['box', 'Say what you saw, optional (picked)'], ['plain', 'One click, the address only']] }
+  ],
+  decided: [
+    'Dark only, in the cover\'s own colours: night blue, gold to do something, red to remove',
+    'Two switches: On this site and Everywhere; both stay off until you turn them back on',
+    'The covers on this page, by word with a count',
+    'A button to report GTA that was missed',
+    'The icon: the paw on night blue with a gold number',
+    'Settings: rows with a bin, reports in a table, one part under the other, in their own tab',
+    'One word list that starts from the built-in words; Reset brings them back (it asks first)',
+    'On the page, your own words show as "a word from your list"; the menu, which the page cannot read, shows the word',
+    'Nothing leaves the PC'
+  ],
+  onChange: function (state) { window.GTAB && window.GTAB.render(state); }
+};
+</script>
+
+<script>
+(function () {
+  var PAW = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ellipse cx="6" cy="9" rx="2.2" ry="2.8"/><ellipse cx="10" cy="5.5" rx="2.2" ry="2.8"/><ellipse cx="14" cy="5.5" rx="2.2" ry="2.8"/><ellipse cx="18" cy="9" rx="2.2" ry="2.8"/><path d="M12 11c-3 0-6 3.5-6 6.3C6 19.4 7.6 20 9 20c1.2 0 2-.6 3-.6s1.8.6 3 .6c1.4 0 3-.6 3-2.7C18 14.5 15 11 12 11z"/></svg>';
+  var COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+  var BIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+
+  // Verbatim from extension/lib/matcher.js.
+  var BUILT_IN = ['gta*', 'grand theft auto', 'rockstar games', 'vice city', 'leonida', 'los santos', 'liberty city', 'san andreas',
+    'jason and lucia', 'jason e lucia', 'jason y lucia', 'lucia and jason', 'lucia e jason', 'lucia y jason'];
+  var REASONS = {
+    'too-long': 'Too long: 80 characters at most.',
+    'too-many-words': 'Too many words: 10 at most.',
+    'too-short': 'Too short: use at least 3 letters or numbers.',
+    'star-not-at-end': 'A * only works at the end, where it means "words starting with".',
+    duplicate: 'Already in the list.',
+    'list-full': 'The list is full (200 at most). Remove one to add this.'
+  };
+
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var $ = function (id) { return document.getElementById(id); };
+  var plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many); };
+
+  // ---------------- the menu ----------------
+  var COVERS = [
+    { id: 'c0', word: 'gta*' }, { id: 'c1', word: 'gta*' }, { id: 'c2', word: 'gta*' },
+    { id: 'c3', word: 'trevor philips', own: true }, { id: 'c4', word: 'vice city' }
+  ];
+  var menu = null, cur = {}, last = {};
+
+  function resetMenu(s) {
+    menu = { site: s !== 'offsite', all: s !== 'offall', none: s === 'none', open: true, done: {}, msg: '', missOpen: false, missCount: 0 };
+  }
+  function live() { return menu.site && menu.all && !menu.none; }
+  function groups() {
+    var out = [];
+    if (!live()) return out;
+    COVERS.forEach(function (c) {
+      var g = out.filter(function (x) { return x.word === c.word; })[0];
+      if (!g) out.push(g = { word: c.word, own: !!c.own, ids: [] });
+      g.ids.push(c.id);
+    });
+    return out;
+  }
+  function stillCovered() {
+    return groups().reduce(function (n, g) { return n + (menu.done[g.word] ? 0 : g.ids.length); }, 0);
+  }
+
+  function paintSite() {
+    var on = {};
+    groups().forEach(function (g) { if (!menu.done[g.word]) g.ids.forEach(function (id) { on[id] = true; }); });
+    COVERS.forEach(function (c) {
+      var el = $(c.id);
+      el.classList.toggle('covered', !!on[c.id]);
+      var word = c.own ? 'a word from your list' : c.word;
+      el.setAttribute('data-note', el.classList.contains('comment') || el.classList.contains('result')
+        ? 'Hidden: this was about GTA (matched: ' + word + ')' : 'Hidden: this was about GTA\n(matched: ' + word + ')');
+    });
+  }
+
+  function paintIcon() {
+    var tile = $('ext-tile'), badge = $('badge'), ext = $('ext');
+    tile.innerHTML = PAW;
+    var n = stillCovered();
+    ext.classList.remove('dim');
+    badge.className = 'badge';
+    badge.hidden = false;
+    if (!menu.site || !menu.all) {
+      if (cur.offlook === 'word') { badge.textContent = 'off'; badge.classList.add('off'); }
+      else { badge.hidden = true; ext.classList.add('dim'); }
+      ext.setAttribute('aria-label', 'GTA Blocker, off');
+    } else if (n === 0) {
+      badge.hidden = true;
+      ext.setAttribute('aria-label', 'GTA Blocker, nothing covered');
+    } else {
+      badge.textContent = String(n);
+      ext.setAttribute('aria-label', 'GTA Blocker, ' + n + ' covered');
+    }
+  }
+
+  // The whole row is the target, not only the 44 px switch.
+  function switchRow(label, sub, act, on) {
+    return '<div class="sw-row" data-row="' + act + '"><div><b>' + label + '</b><small>' + sub + '</small></div>' +
+      '<button type="button" class="switch" role="switch" aria-label="' + label + '" aria-checked="' + on + '" data-act="' + act + '"><span class="knob"></span></button>' +
+      '<span class="sw-word' + (on ? ' on' : '') + '">' + (on ? 'On' : 'Off') + '</span></div>';
+  }
+  function waitingRow() {
+    return '<div class="sw-row waiting"><div><b>On this site</b><small>Comes back with Everywhere</small></div>' +
+      '<button type="button" class="switch" role="switch" aria-label="On this site" aria-checked="' + menu.site + '" disabled><span class="knob"></span></button>' +
+      '<span class="sw-word"></span></div>';
+  }
+
+  function renderMenu() {
+    var p = $('popup');
+    var h = '<div class="ph"><span class="logo">' + PAW + '</span><b>GTA Blocker</b></div>';
+    if (menu.all) h += switchRow('On this site', 'youtube.com', 'site', menu.site) + switchRow('Everywhere', 'Every site you visit', 'all', true);
+    else if (cur.waitrow === 'fade') h += switchRow('Everywhere', 'Every site you visit', 'all', false) + waitingRow();
+    else h += switchRow('Everywhere', 'Every site you visit', 'all', false);
+
+    if (!menu.all) h += '<p class="state">Off everywhere. Nothing is covered on any site until you turn it back on.</p>';
+    else if (!menu.site) h += '<p class="state">Off on youtube.com. Nothing is covered here until you turn it back on.</p>';
+    else {
+      var gs = groups(), n = stillCovered();
+      if (!gs.length) h += '<p class="count">Nothing covered on this page.</p>';
+      else {
+        h += '<p class="count">' + (n ? n + ' covered on this page' : 'Nothing covered on this page now') + '</p><ul class="groups">';
+        var anyReport = false;
+        gs.forEach(function (g) {
+          var removeWay = g.own && cur.ownrow === 'remove';
+          var done = menu.done[g.word];
+          if (done) {
+            h += '<li class="done"><span class="gw">' + esc(g.word) + '<br>' +
+              (done === 'removed' ? 'Removed from your list.' : 'Shown again on this page.') + '</span>' +
+              '<button type="button" class="btn" data-act="undo" data-word="' + esc(g.word) + '">Undo</button></li>';
+          } else {
+            if (!removeWay) anyReport = true;
+            h += '<li><span class="gw">' + esc(g.word) + (g.own ? '<span class="tag yours">yours</span>' : '') + '</span>' +
+              '<span class="gn" aria-label="' + plural(g.ids.length, 'cover', 'covers') + '">' + g.ids.length + '</span>' +
+              (removeWay
+                ? '<button type="button" class="btn red" data-act="remove" data-word="' + esc(g.word) + '">Remove from my list</button>'
+                : '<button type="button" class="btn" data-act="notgta" data-word="' + esc(g.word) + '">Not about GTA</button>') + '</li>';
+          }
+        });
+        h += '</ul>';
+        if (anyReport) h += '<p class="hint">Not about GTA shows them again on this page and saves a report.</p>';
+      }
+    }
+    if (menu.missOpen) {
+      h += '<div class="miss"><label for="miss-input">What did you see? (optional)</label>' +
+        '<input id="miss-input" autocomplete="off" placeholder="like a GTA video in the sidebar">' +
+        '<div class="row"><button type="button" class="btn gold" data-act="miss-save">Save report</button>' +
+        '<button type="button" class="btn" data-act="miss-cancel">Cancel</button></div></div>';
+    }
+    h += '<p class="msg good" role="status">' + esc(menu.msg) + '</p>';
+    h += '<div class="pfoot">';
+    if (menu.site && menu.all && !menu.missOpen) h += '<button type="button" class="btn" data-act="miss">Report missed GTA</button>';
+    h += '<button type="button" class="btn" data-act="settings">Settings</button></div>';
+    p.innerHTML = h;
+    p.hidden = !menu.open;
+    $('ext').setAttribute('aria-expanded', String(menu.open));
+    paintSite();
+    paintIcon();
+  }
+
+  function focusIn(selector) {
+    var el = $('popup').querySelector(selector);
+    if (el) el.focus();
+  }
+  function wordSel(act, word) {
+    return '[data-act="' + act + '"][data-word="' + word.replace(/"/g, '\\"') + '"]';
+  }
+
+  function saveMiss(text) {
+    menu.missCount += 1;
+    menu.missOpen = false;
+    menu.msg = menu.missCount === 1 ? 'Saved to your reports, with this page\'s address.' : 'Saved again: ' + menu.missCount + ' reports from this page.';
+    if (text) menu.msg += ' You wrote: "' + text + '".';
+  }
+
+  function menuAction(btn) {
+    var act = btn.getAttribute('data-act'), word = btn.getAttribute('data-word');
+    if (act === 'site') { menu.site = !menu.site; menu.msg = ''; renderMenu(); focusIn('[data-act="site"]'); return; }
+    if (act === 'all') { menu.all = !menu.all; menu.msg = ''; renderMenu(); focusIn('[data-act="all"]'); return; }
+    if (act === 'notgta' || act === 'remove') {
+      menu.done[word] = act === 'remove' ? 'removed' : 'shown';
+      menu.msg = '';
+      renderMenu();
+      // The focus goes to this row's Undo: never onto the next row's button, which a double
+      // click or a second Enter would press (found in the design review).
+      focusIn(wordSel('undo', word));
+      return;
+    }
+    if (act === 'undo') {
+      var was = menu.done[word];
+      delete menu.done[word];
+      menu.msg = was === 'removed' ? 'Back in your list and covered again.' : 'Covered again; the report is taken back.';
+      renderMenu();
+      focusIn(wordSel(was === 'removed' ? 'remove' : 'notgta', word));
+      return;
+    }
+    if (act === 'miss') {
+      if (cur.missbox === 'plain') { saveMiss(''); renderMenu(); focusIn('[data-act="miss"]'); }
+      else { menu.missOpen = true; menu.msg = ''; renderMenu(); focusIn('#miss-input'); }
+      return;
+    }
+    if (act === 'miss-save') { saveMiss($('miss-input').value.trim()); renderMenu(); focusIn('[data-act="miss"]'); return; }
+    if (act === 'miss-cancel') { menu.missOpen = false; renderMenu(); focusIn('[data-act="miss"]'); return; }
+    if (act === 'settings') goTo('settings');
+  }
+
+  $('popup').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-act]');
+    if (btn) { if (!btn.disabled) menuAction(btn); return; }
+    var row = e.target.closest('.sw-row[data-row]');
+    if (row) menuAction(row.querySelector('button[data-act]'));
+  });
+  $('popup').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.id === 'miss-input') { e.preventDefault(); saveMiss(e.target.value.trim()); renderMenu(); focusIn('[data-act="miss"]'); }
+  });
+  $('ext').addEventListener('click', function () { menu.open = !menu.open; renderMenu(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && cur.page === 'menu' && menu.open) { menu.open = false; renderMenu(); $('ext').focus(); }
+  });
+
+  // ---------------- the settings page ----------------
+  var words, sitesOff, reports, wordMsg, wordMsgKind, undoWord, siteMsg, repMsg, repMsgKind, undoReport, newWord;
+  function resetSettings() {
+    words = [{ w: 'trevor philips', own: true }, { w: 'michael de santa', own: true }]
+      .concat(BUILT_IN.filter(function (w) { return w !== 'los santos'; }).map(function (w) { return { w: w, own: false }; }));
+    sitesOff = ['reddit.com', 'news.google.com'];
+    reports = [
+      { when: '18 Nov 2026, 19:40', kind: 'Not about GTA', note: 'liberty city', page: 'news.google.com/stories/miami-liberty-city-park' },
+      { when: '18 Nov 2026, 19:12', kind: 'Missed GTA', note: 'You wrote: "a GTA video in the sidebar"', page: 'reddit.com/r/gaming/comments/1h2k9' },
+      { when: '17 Nov 2026, 22:05', kind: 'Not about GTA', note: 'san andreas', page: 'x.com/usgs_quakes/status/18321' }
+    ];
+    wordMsg = ''; wordMsgKind = 'good'; undoWord = null; siteMsg = ''; repMsg = ''; repMsgKind = 'good'; undoReport = null; newWord = null;
+  }
+
+  function norm(s) { return s.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim(); }
+  function refuse(entry, list) {
+    var n = norm(entry);
+    if (n.length > 80) return 'too-long';
+    if (n.split(' ').length > 10) return 'too-many-words';
+    if (n.indexOf('*') >= 0 && n.indexOf('*') !== n.length - 1) return 'star-not-at-end';
+    if ((n.match(/[\p{L}\p{N}]/gu) || []).length < 3) return 'too-short';
+    if (list.some(function (x) { return norm(x.w) === n; })) return 'duplicate';
+    if (list.length >= 200) return 'list-full';
+    return null;
+  }
+
+  function renderWords() {
+    $('n-words').textContent = '(' + words.length + ' of 200)';
+    var h = '<form class="add" id="add-form"><input id="add-input" autocomplete="off" spellcheck="false" placeholder="A word or phrase, like trevor philips" aria-label="Add a word or phrase" aria-describedby="word-msg">' +
+      '<button class="btn gold" type="submit">Add</button></form>' +
+      '<p class="msg ' + wordMsgKind + '" id="word-msg" role="status">' + esc(wordMsg) +
+      (undoWord ? ' <button type="button" class="link-btn" data-wact="undo">Undo</button>' : '') + '</p>' +
+      '<ul class="wlist">' + words.map(function (x, i) {
+        return '<li' + (x.w === newWord ? ' class="new"' : '') + '><span class="w">' + esc(x.w) + (x.own ? '<span class="tag yours">yours</span>' : '<span class="tag">built-in</span>') + '</span>' +
+          '<button type="button" class="icon-btn red" data-wact="del" data-i="' + i + '" aria-label="Remove ' + esc(x.w) + '" title="Remove">' + BIN + '</button></li>';
+      }).join('') + '</ul>' +
+      '<div class="row-actions"><button type="button" class="btn red" data-wact="reset">Reset to the built-in words</button></div>';
+    $('words-box').innerHTML = h;
+  }
+
+  function renderSites() {
+    $('n-sites').textContent = sitesOff.length ? '(' + sitesOff.length + ')' : '';
+    var h = '';
+    if (!menu.all) h += '<p class="msg warn" style="margin:0 0 10px">Off everywhere right now: nothing is covered on any site. Turn Everywhere back on in the toolbar menu.</p>';
+    if (!sitesOff.length) h += '<p class="empty">None. To turn it off on a site, use the toolbar menu there.</p>';
+    else h += '<ul class="sites">' + sitesOff.map(function (s, i) {
+      return '<li><span>' + esc(s) + '</span><button type="button" class="btn" data-sact="on" data-i="' + i + '">Turn on</button></li>';
+    }).join('') + '</ul>';
+    h += '<p class="msg good" role="status">' + esc(siteMsg) + '</p>';
+    $('sites-box').innerHTML = h;
+  }
+
+  function reportText() {
+    return reports.map(function (r) { return r.when + '  ' + r.kind + '  ' + (r.note ? r.note + '  ' : '') + r.page; }).join('\n');
+  }
+
+  function renderReports() {
+    $('n-reports').textContent = reports.length ? '(' + reports.length + ')' : '';
+    var h = '';
+    if (!reports.length) h += '<p class="empty">No reports yet. "Not about GTA" and "Report missed GTA" in the toolbar menu add them here.</p>';
+    else {
+      h += '<table class="rep"><thead><tr><th>When</th><th>Report</th><th>Word or note</th><th>Page</th><th><span class="sr">Remove</span></th></tr></thead><tbody>' +
+        reports.map(function (r, i) {
+          return '<tr><td class="when">' + esc(r.when) + '</td><td data-label="Report">' + esc(r.kind) + '</td>' +
+            '<td data-label="' + (r.kind === 'Missed GTA' ? 'Note' : 'Word') + '">' + esc(r.note || '') + '</td>' +
+            '<td data-label="Page">' + esc(r.page) + '</td>' +
+            '<td class="act"><button type="button" class="icon-btn red" data-ract="del" data-i="' + i + '" aria-label="Remove this report" title="Remove">' + BIN + '</button></td></tr>';
+        }).join('') + '</tbody></table>' +
+        '<div class="row-actions"><button type="button" class="btn" data-ract="copy">' + COPY + 'Copy all</button>' +
+        '<button type="button" class="btn red" data-ract="clear">Clear all</button></div>';
+    }
+    h += '<p class="msg ' + repMsgKind + '" role="status">' + esc(repMsg) + (undoReport ? ' <button type="button" class="link-btn" data-ract="undo">Undo</button>' : '') + '</p>';
+    $('reports-box').innerHTML = h;
+  }
+
+  function renderSettings() {
+    $('sh-logo').innerHTML = PAW;
+    renderWords();
+    renderSites();
+    renderReports();
+  }
+
+  // A confirm box for what cannot be undone. The safe button gets the focus and neither button
+  // submits a form, so Enter never picks the wrong one.
+  function ask(title, text, yes, no, then, back) {
+    $('ask-h').textContent = title;
+    $('ask-p').textContent = text;
+    $('ask-yes').textContent = yes;
+    $('ask-no').textContent = no;
+    var d = $('ask');
+    var done = false;
+    $('ask-yes').onclick = function () { done = true; d.close(); then(); };
+    $('ask-no').onclick = function () { d.close(); };
+    d.onclose = function () { if (!done && back) back.focus(); };
+    d.showModal();
+    $('ask-no').focus();
+  }
+  function listShort(items) {
+    if (items.length <= 4) return items.join(', ');
+    return items.slice(0, 3).join(', ') + ' and ' + (items.length - 3) + ' more';
+  }
+
+  function doReset(btn) {
+    var own = words.filter(function (x) { return x.own; }).map(function (x) { return x.w; });
+    var have = words.map(function (x) { return x.w; });
+    var back = BUILT_IN.filter(function (w) { return have.indexOf(w) < 0; });
+    if (!own.length && !back.length) { wordMsg = 'The list is already the built-in words.'; wordMsgKind = 'good'; undoWord = null; renderWords(); return; }
+    var parts = [];
+    if (own.length) parts.push('your ' + plural(own.length, 'own word goes', 'own words go') + ' (' + listShort(own) + ')');
+    if (back.length) parts.push('the ' + plural(back.length, 'built-in word you removed comes', 'built-in words you removed come') + ' back (' + listShort(back) + ')');
+    var text = parts.join(', and ') + '.';
+    ask('Reset the word list?', text.charAt(0).toUpperCase() + text.slice(1), 'Reset the list', 'Keep it', function () {
+      words = BUILT_IN.map(function (w) { return { w: w, own: false }; });
+      wordMsg = 'Back to the built-in words.'; wordMsgKind = 'good'; undoWord = null; newWord = null;
+      renderWords();
+      document.querySelector('[data-wact="reset"]').focus();
+    }, btn);
+  }
+
+  document.addEventListener('submit', function (e) {
+    if (e.target.id !== 'add-form') return;
+    e.preventDefault();
+    var v = $('add-input').value;
+    if (!norm(v)) return;
+    var code = refuse(v, words);
+    if (code) { wordMsg = REASONS[code]; wordMsgKind = 'bad'; undoWord = null; renderWords(); $('add-input').value = v; $('add-input').focus(); return; }
+    var w = norm(v);
+    // A built-in word typed back in is built-in again, not one of yours; your words go first.
+    var isOwn = BUILT_IN.indexOf(w) < 0;
+    words.push({ w: w, own: isOwn });
+    var own = words.filter(function (x) { return x.own; });
+    if (isOwn) own = [own.pop()].concat(own);
+    words = own.concat(BUILT_IN.filter(function (b) { return words.some(function (x) { return !x.own && x.w === b; }); }).map(function (b) { return { w: b, own: false }; }));
+    newWord = w;
+    wordMsg = 'Added "' + w + '".'; wordMsgKind = 'good'; undoWord = null;
+    renderWords();
+    $('add-input').focus();
+  });
+  document.addEventListener('input', function (e) {
+    if (e.target.id === 'add-input' && wordMsgKind === 'bad') { wordMsg = ''; $('word-msg').textContent = ''; }
+  });
+
+  $('settings-page').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-wact], button[data-sact], button[data-ract]');
+    if (!b) return;
+    var w = b.getAttribute('data-wact'), s = b.getAttribute('data-sact'), r = b.getAttribute('data-ract');
+    if (w === 'del') {
+      var i = +b.getAttribute('data-i');
+      var gone = words.splice(i, 1)[0];
+      undoWord = { item: gone, at: i };
+      newWord = null;
+      wordMsg = 'Removed "' + gone.w + '".'; wordMsgKind = 'good';
+      renderWords();
+      var bins = document.querySelectorAll('[data-wact="del"]');
+      (bins[Math.min(i, bins.length - 1)] || $('add-input')).focus();
+    } else if (w === 'undo') {
+      words.splice(undoWord.at, 0, undoWord.item);
+      wordMsg = '"' + undoWord.item.w + '" is back.'; wordMsgKind = 'good';
+      undoWord = null;
+      renderWords();
+      $('add-input').focus();
+    } else if (w === 'reset') doReset(b);
+    else if (s === 'on') {
+      var k = +b.getAttribute('data-i');
+      var site = sitesOff.splice(k, 1)[0];
+      siteMsg = menu.all ? 'Covers are back on ' + site + '.' : site + ' will be covered again once Everywhere is on.';
+      renderSites();
+      var ons = document.querySelectorAll('[data-sact="on"]');
+      (ons[Math.min(k, ons.length - 1)] || $('h-sites')).focus();
+    } else if (r === 'copy') {
+      var ok = function () { repMsg = 'Copied ' + plural(reports.length, 'report', 'reports') + '. Paste them into your message to Claude.'; repMsgKind = 'good'; undoReport = null; renderReports(); document.querySelector('[data-ract="copy"]').focus(); };
+      var fail = function () { repMsg = 'Could not copy. Select the table and copy it by hand.'; repMsgKind = 'bad'; undoReport = null; renderReports(); document.querySelector('[data-ract="copy"]').focus(); };
+      if (navigator.clipboard) navigator.clipboard.writeText(reportText()).then(ok, fail); else fail();
+    } else if (r === 'del') {
+      var j = +b.getAttribute('data-i');
+      undoReport = { item: reports.splice(j, 1)[0], at: j };
+      repMsg = 'Report removed.'; repMsgKind = 'good';
+      renderReports();
+      var dels = document.querySelectorAll('[data-ract="del"]');
+      (dels[Math.min(j, dels.length - 1)] || $('h-reports')).focus();
+    } else if (r === 'undo') {
+      reports.splice(undoReport.at, 0, undoReport.item);
+      undoReport = null;
+      repMsg = 'The report is back.'; repMsgKind = 'good';
+      renderReports();
+      $('h-reports').focus();
+    } else if (r === 'clear') {
+      ask('Clear all reports?', 'The ' + plural(reports.length, 'report goes', 'reports go') + ' for good. Copy them first if you still want to send them.', 'Clear all', 'Keep them', function () {
+        reports = []; undoReport = null;
+        repMsg = 'Reports cleared.'; repMsgKind = 'good';
+        renderReports();
+        $('h-reports').focus();
+      }, b);
+    }
+  });
+
+  // ---------------- wiring to the Preview options box ----------------
+  var MENU_KEYS = ['state', 'offlook', 'waitrow', 'ownrow', 'missbox'];
+  function goTo(page) {
+    var r = document.querySelector('#pv input[name="page"][value="' + page + '"]');
+    if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); }
+  }
+
+  window.GTAB = {
+    render: function (state) {
+      var changed = Object.keys(state).filter(function (k) { return last[k] !== undefined && last[k] !== state[k]; });
+      var first = last.page === undefined;
+      last = Object.assign({}, state);
+      cur = state;
+      if (first) { resetMenu(state.state); resetSettings(); }
+      if (changed.indexOf('state') >= 0) resetMenu(state.state);
+      // A switch that belongs to the menu takes you there, so its effect is in view.
+      if (changed.some(function (k) { return MENU_KEYS.indexOf(k) >= 0; }) && state.page !== 'menu') { goTo('menu'); return; }
+      renderMenu();
+      renderSettings();
+    }
+  };
+})();
+</script>
+
+<script>
+// The switch panel, from the shinu-design template. Nothing here belongs to the design.
+(function () {
+  var root = document.documentElement, q = new URLSearchParams(location.search), state = {};
+  PREVIEW.choices.forEach(function (c) {
+    var want = q.get(c.key), known = c.options.some(function (o) { return o[0] === want; });
+    state[c.key] = known ? want : c.options[0][0];
+  });
+
+  var pv = document.createElement('aside');
+  pv.id = 'pv';
+  pv.setAttribute('aria-label', 'Preview options');
+  var html = '<button class="pv-open" type="button" id="pv-open">Preview options</button>' +
+             '<div class="pv-head"><b>Preview options</b><button type="button" id="pv-hide">Hide</button></div>' +
+             '<small>Not part of the design. Flip these to compare.</small>';
+  PREVIEW.choices.forEach(function (c) {
+    html += '<fieldset><legend>' + c.label + '</legend>' + c.options.map(function (o) {
+      return '<label><input type="radio" name="' + c.key + '" value="' + o[0] + '"> ' + o[1] + '</label>';
+    }).join('') + '</fieldset>';
+  });
+  if (PREVIEW.decided && PREVIEW.decided.length) {
+    html += '<div class="pv-decided"><b>Decided</b><ul>' + PREVIEW.decided.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul></div>';
+  }
+  pv.innerHTML = html;
+  document.body.appendChild(pv);
+
+  function apply() {
+    Object.keys(state).forEach(function (k) { root.dataset[k] = state[k]; });
+    pv.querySelectorAll('input[type=radio]').forEach(function (r) { r.checked = state[r.name] === r.value; });
+    var url = new URL(location.href);
+    Object.keys(state).forEach(function (k) { url.searchParams.set(k, state[k]); });
+    history.replaceState(null, '', url);
+    if (PREVIEW.onChange) PREVIEW.onChange(state);
+  }
+  pv.addEventListener('change', function (e) {
+    if (e.target.name in state) { state[e.target.name] = e.target.value; apply(); }
+  });
+  function clashCheck() {
+    var old = pv.querySelector('.pv-clash'); if (old) old.remove();
+    var hits = PREVIEW.choices.map(function (c) { return c.key; }).filter(function (k) {
+      return Array.prototype.some.call(document.body.querySelectorAll('[data-' + k + ']'), function (el) { return !pv.contains(el); });
+    });
+    if (!hits.length) return;
+    var p = document.createElement('p'); p.className = 'pv-clash';
+    p.textContent = 'Name clash: ' + hits.map(function (k) { return '"' + k + '"'; }).join(', ') + ' is a preview choice AND a data- attribute on the page. ' +
+      'A click handler asking closest(\'[data-' + hits[0] + ']\') will match <html>. Rename one.';
+    pv.insertBefore(p, pv.querySelector('fieldset'));
+  }
+  window.addEventListener('pv-recheck', clashCheck);
+  pv.addEventListener('change', clashCheck);
+  pv.querySelector('#pv-hide').addEventListener('click', function () { pv.classList.add('min'); });
+  pv.querySelector('#pv-open').addEventListener('click', function () { pv.classList.remove('min'); });
+  if (q.get('pv') === '0') pv.hidden = true;
+  else if (matchMedia('(max-width: 700px)').matches) pv.classList.add('min');
+  apply();
+  clashCheck();
+})();
+</script>
+</body>
+</html>

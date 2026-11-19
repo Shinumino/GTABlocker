@@ -87,9 +87,13 @@ async function waitFor(what, timeoutMs, probe) {
 // profileRoot: where the throwaway profile goes (default %TEMP%). Tests that check "no profile was
 // left" give their own folder: two test files that both looked at %TEMP% raced (2026-11-18, one
 // failure in 12 runs side by side).
+//
+// systemAccess: lets the test drive Firefox's own interface (the toolbar icon, the add-on's
+// menu) through Marionette's chrome context. Only this throwaway browser gets it, never the
+// user's (agreed 2026-11-18); Firefox refuses the chrome context without it.
 export async function startFirefox({
   prefs = {}, firefoxBin = FIREFOX_BIN, startTimeoutMs = 30_000, updateRoots = defaultRoots(),
-  profileRoot = os.tmpdir(),
+  profileRoot = os.tmpdir(), systemAccess = false,
 } = {}) {
   // First of all: a Firefox started while an update waits installs that update into the user's
   // Firefox (tools/firefox_update.mjs). Nothing is created or started before this check.
@@ -121,7 +125,7 @@ export async function startFirefox({
     windowsHide: true,
     // A crash would otherwise leave a report in the per-user Crash Reports folder, which the
     // user's own Firefox then offers to send.
-    env: { ...process.env, MOZ_CRASHREPORTER_DISABLE: '1' },
+    env: { ...process.env, MOZ_CRASHREPORTER_DISABLE: '1', ...(systemAccess ? { MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: '1' } : {}) },
   });
   let exited = false;
   let spawnError = null;

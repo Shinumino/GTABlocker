@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A page with a player from another site (switch test fixture)</title>
+<!-- The frame comes from other.test: a player embedded in a page follows the switch of the site
+     the person is on (switch.test), not its own address. -->
+</head>
+<body>
+<p>Nothing about the game up here.</p>
+<iframe id="player" src="http://other.test:PORT/frame.html" width="600" height="200"></iframe>
+<script>
+  // The fixture server picks its port at random: the frame takes this page's port.
+  document.getElementById('player').src = 'http://other.test:' + location.port + '/frame.html';
+</script>
+</body>
+</html>

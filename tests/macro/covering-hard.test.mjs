@@ -22,6 +22,16 @@ test('the page is not marked ready while it is still being read', async () => {
   assert.equal(await js('return window.__markerWhileParsing'), null);
 });
 
+test('a page still loading when covering starts is marked ready only once its first look is done', async () => {
+  // Sent in two parts, a second apart (tests/support/fixtures.mjs): covering starts while the
+  // page is loading, and "ready" must wait for the first look (mutation pass, step 4: the short
+  // page above is fully loaded before covering starts, so it can no longer tell).
+  const { firefox, fixtures } = session;
+  await firefox.navigate(fixtures.url('cover.test', '/stream.slow.html'));
+  await firefox.waitForPage('ready', "return document.documentElement.getAttribute('data-gta-blocker') === 'ready'");
+  assert.equal(await js('return window.__coversAtReady'), 2, 'both parts were covered when the page was marked ready');
+});
+
 test('a cover never changes a box\'s size, even when the site uses the box\'s own ::before or ::after', async () => {
   await open();
   for (const [gta, twin] of [['auto-gta', 'auto-dog'], ['cf-gta', 'cf-dog'], ['ratio-gta', 'ratio-dog']]) {

@@ -26,6 +26,9 @@
   const LAYERS = 'data-gta-layers';
   const STASHED_TITLE = 'data-gta-title';
   const WITHIN = 'data-gta-within';
+  // The whole-page cover's element: this prefix and a random rest, and the site's own title on it.
+  const HOST_PREFIX = 'gta-blocker-page-';
+  const LEFT_TITLE = 'data-gta-site-title';
   // A covered box's own tooltip would still show the GTA text on hover, so while it is covered
   // its title waits in data-gta-title, which is read like the title itself.
   const TEXT_ATTRS = ['alt', 'title', 'aria-label', STASHED_TITLE];
@@ -48,7 +51,21 @@
   // visible (found in review, 2026-11-18).
   const SHADOW_CSS = `:host([${COVER}]) *, :host([${WITHIN}]) * { visibility: hidden !important; }`;
 
-  function start({ matcher, onReady }) {
+  const sheeted = new WeakSet();
+  let shadowSheet = null;
+
+  // Starts covering this page with `matcher`. Returns { stop, show, cover, retell }:
+  // - stop() undoes everything start did (observers, listeners, every cover, the whole-page
+  //   cover and its tab title) and returns the page's state to pass to the next start, so a
+  //   "Show anyway" and the words shown again outlive a restart (the switch, a new word list);
+  // - show(entry) shows again, on this page's address, every cover made by that entry ("Not
+  //   about GTA"), and cover(entry) takes that back (Undo);
+  // - retell() says the covers again (a page restored by Back says nothing on its own).
+  // label(entry) is the word a cover shows, and it is required: the content script never lets
+  // one of the user's own words reach the page, and a caller that forgot it would leak them
+  // (design review). onCovers(counts) hears { entry: number of covers } after each change.
+  function start({ matcher, label, onReady = () => {}, pageState: given = null, onCovers = () => {} }) {
+    if (typeof label !== 'function') throw new TypeError('page.start needs label(entry): the word a cover may show');
     const { cover } = ns;
     const doc = root.document;
     const win = root.window || root;
@@ -56,9 +73,11 @@
     const covered = new Map(); // box -> the entry that covered it
     const hiddenMatches = new Map(); // element -> entry, for matches that are not shown yet
     const queue = [];
-    const sheeted = new WeakSet();
-    let shadowSheet = null;
+    // The words the person said are not about GTA, for one address (cover.dismiss).
+    let dismissed = given && given.dismissed ? given.dismissed : null;
     let scheduled = false;
+    let stopped = false;
+    let lastCounts = '';
     let displays = new Map();
     let visibles = new Map();
 
@@ -239,7 +258,7 @@
 
     function apply(box, entry) {
       const d = describe(box);
-      box.setAttribute(WORD, entry);
+      box.setAttribute(WORD, label(entry));
       box.setAttribute(SIZE, cover.sizeFor(d));
       box.setAttribute(LAYERS, cover.layersFor(d));
       if (cover.needsAnchor(d)) box.setAttribute(ANCHOR, '');
@@ -265,8 +284,12 @@
       resizes.unobserve(box);
     }
 
+    function shownHere(entry) {
+      return cover.dismissedOn(dismissed, pageKey()).includes(entry);
+    }
+
     function coverFrom(el, entry) {
-      if (!el.isConnected || coveredAncestor(el)) return;
+      if (!el.isConnected || coveredAncestor(el) || shownHere(entry)) return;
       const box = boxFor(el);
       if (box) apply(box, entry);
     }
@@ -297,6 +320,7 @@
 
     function flush() {
       scheduled = false;
+      if (stopped) return;
       displays = new Map();
       visibles = new Map();
       const records = queue.splice(0);
@@ -359,6 +383,19 @@
       }
       checkTitle();
       observer.takeRecords(); // everything still queued now was written by us
+      tell();
+    }
+
+    // { entry: covers } for this page, the whole-page cover included; told only when it changed.
+    function counts() {
+      return cover.countEntries(pageCover ? [...covered.values(), pageCover.entry] : covered.values());
+    }
+    function tell() {
+      const now = counts();
+      const text = JSON.stringify(now);
+      if (text === lastCounts) return;
+      lastCounts = text;
+      onCovers(now);
     }
 
     function insideAny(el, set) {
@@ -371,7 +408,7 @@
     }
 
     function schedule() {
-      if (!scheduled) {
+      if (!scheduled && !stopped) {
         scheduled = true;
         win.setTimeout(flush, 30);
       }
@@ -401,12 +438,13 @@
 
     // ---- the whole-page cover ----
 
-    let pageCover = null; // { host, dialog, button, key, waitingForTitle }
-    let siteTitle = null;
-    let revealedAt = null;
+    let pageCover = null; // { host, dialog, button } while the page is covered
+    // What cover.pageStep decides from; see it in lib/cover.js.
+    let pageState = given ? { cover: null, revealedAt: given.revealedAt ?? null, revealedBy: given.revealedBy ?? null, siteTitle: given.siteTitle ?? null }
+      : { cover: null, revealedAt: null, siteTitle: null };
     // The element's name changes every run: a page could define an element of a known name
     // first and break the cover with it.
-    const hostName = `gta-blocker-page-${Math.random().toString(36).slice(2, 10)}`;
+    const hostName = `${HOST_PREFIX}${Math.random().toString(36).slice(2, 10)}`;
 
     // The page's address without its #part: a link to a place on the same page is the same visit.
     function pageKey() {
@@ -446,7 +484,7 @@
       title.textContent = 'This page is about GTA';
       const word = doc.createElement('p');
       word.className = 'word';
-      word.textContent = `(matched: ${entry})`;
+      word.textContent = `(matched: ${label(entry)})`;
       const button = doc.createElement('button');
       button.type = 'button';
       button.textContent = 'Show anyway';
@@ -464,10 +502,11 @@
         });
       }
       button.addEventListener('click', () => {
-        revealedAt = pageKey();
+        pageState = cover.showAnyway(pageState, pageKey(), 'button');
         closePageCover();
+        tell();
       });
-      return { host, dialog, button };
+      return { host, dialog, button, entry };
     }
 
     // In the top page the cover is a modal window: focus stays in it and the page behind is
@@ -489,9 +528,11 @@
       }
     }
 
-    function openPageCover(entry, key) {
-      siteTitle = doc.title;
-      pageCover = { ...buildPageCover(entry), key, waitingForTitle: false };
+    function openPageCover(entry) {
+      pageCover = buildPageCover(entry);
+      // The site's own title, kept on our element: if this copy of the add-on is removed, the
+      // next copy finds it there and gives it back to the tab (see cleanLeftovers).
+      if (pageState.siteTitle) pageCover.host.setAttribute(LEFT_TITLE, pageState.siteTitle);
       doc.documentElement.appendChild(pageCover.host);
       showDialog(pageCover);
       setTitle(cover.HIDDEN_TITLE);
@@ -503,33 +544,23 @@
       pageCover = null;
       if (isTop) pc.dialog.close();
       pc.host.remove();
-      if (doc.title === cover.HIDDEN_TITLE || doc.title.includes(cover.HIDDEN_TITLE)) setTitle(siteTitle);
+      if (cover.isOurTitle(doc.title)) setTitle(pageState.siteTitle);
     }
 
-    // The whole-page cover follows the address, not the title: once a page is covered it stays
-    // covered until Show anyway, whatever the site does with its title meanwhile (a counter like
-    // "(1) Hidden page", a blinking "New message!" once closed it, found in review). When the
-    // address changes (a site that loads pages in place), the first title the site sets for the
-    // new address decides again.
+    // What to do is decided by cover.pageStep (the rules and their reasons are there); this only
+    // carries it out.
     function checkTitle() {
-      const key = pageKey();
-      if (pageCover) {
-        const title = doc.title;
-        const ours = title === cover.HIDDEN_TITLE || title.includes(cover.HIDDEN_TITLE);
-        if (pageCover.key !== key) {
-          pageCover.key = key;
-          pageCover.waitingForTitle = true;
-        }
-        if (!ours) {
-          siteTitle = title;
-          if (pageCover.waitingForTitle) {
-            pageCover.waitingForTitle = false;
-            if (!cover.pageMatch(title, matcher)) {
-              closePageCover();
-              return;
-            }
-          }
-        }
+      if (!doc.documentElement) return;
+      const { state, act, entry } = cover.pageStep(pageState, { key: pageKey(), title: doc.title, matcher });
+      // A page the person said is not about GTA for this word counts as shown anyway.
+      if (act === 'open' && shownHere(entry)) {
+        pageState = cover.showAnyway(state, pageKey(), entry);
+        return;
+      }
+      pageState = state;
+      if (act === 'open') openPageCover(entry);
+      else if (act === 'close') closePageCover();
+      else if (act === 'keep') {
         setTitle(cover.HIDDEN_TITLE);
         // A page that removes the cover gets it back. A dialog taken out of the page keeps its
         // open flag but leaves the top layer, so it is closed first and opened as a modal again.
@@ -538,12 +569,7 @@
           doc.documentElement.appendChild(pageCover.host);
           showDialog(pageCover);
         }
-        return;
       }
-      if (revealedAt !== null && revealedAt !== key) revealedAt = null;
-      if (revealedAt === key) return;
-      const entry = cover.pageMatch(doc.title, matcher);
-      if (entry && doc.documentElement) openPageCover(entry, key);
     }
 
     function pageKeys(event) {
@@ -562,21 +588,93 @@
 
     // ---- start ----
 
+    // What an earlier copy of the add-on left on this page (removed, reloaded or updated: its
+    // code stops at once and cleans nothing, checked 2026-11-18): its whole-page cover, with a
+    // button that no longer works, the tab title, and its cover attributes. The next copy, this
+    // one, runs in the open tab, and clears them before it looks (the user's choice).
+    function cleanLeftovers() {
+      for (const el of [...doc.documentElement.children]) {
+        if (!el.localName.startsWith(HOST_PREFIX)) continue;
+        if (cover.isOurTitle(doc.title) && el.hasAttribute(LEFT_TITLE)) setTitle(el.getAttribute(LEFT_TITLE));
+        el.remove();
+      }
+      for (const box of doc.querySelectorAll(`[${COVER}], [${WITHIN}], [${STASHED_TITLE}]`)) {
+        for (const name of [COVER, WORD, SIZE, ANCHOR, LAYERS, WITHIN]) box.removeAttribute(name);
+        if (box.hasAttribute(STASHED_TITLE)) {
+          box.setAttribute('title', box.getAttribute(STASHED_TITLE));
+          box.removeAttribute(STASHED_TITLE);
+        }
+      }
+    }
+
     for (const type of GUARDED) win.addEventListener(type, guard, { capture: true });
     for (const type of PAGE_KEYS) win.addEventListener(type, pageKeys, { capture: true });
     win.addEventListener('play', pageMedia, { capture: true });
     watch(doc);
-    const first = () => {
-      flush();
+    function look() {
       displays = new Map();
       visibles = new Map();
       scan(doc.documentElement);
       checkTitle();
       observer.takeRecords();
+      tell();
+    }
+    const first = () => {
+      if (stopped) return;
+      cleanLeftovers();
+      observer.takeRecords();
+      flush();
+      look();
       onReady();
     };
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', first, { once: true });
     else first();
+
+    const kept = () => ({ ...pageState, cover: null, dismissed });
+
+    return {
+      stop() {
+        if (stopped) return kept();
+        stopped = true;
+        observer.disconnect();
+        resizes.disconnect();
+        queue.length = 0;
+        for (const type of GUARDED) win.removeEventListener(type, guard, { capture: true });
+        for (const type of PAGE_KEYS) win.removeEventListener(type, pageKeys, { capture: true });
+        win.removeEventListener('play', pageMedia, { capture: true });
+        doc.removeEventListener('DOMContentLoaded', first, { once: true });
+        for (const box of [...covered.keys()]) uncover(box);
+        hiddenMatches.clear();
+        if (pageCover) closePageCover();
+        onCovers({});
+        return kept();
+      },
+      show(entry) {
+        if (stopped) return;
+        const key = pageKey();
+        dismissed = cover.dismiss(dismissed, key, entry);
+        for (const [box, e] of [...covered]) if (e === entry) uncover(box);
+        if (pageCover && pageCover.entry === entry) {
+          pageState = cover.showAnyway(pageState, key, entry);
+          closePageCover();
+        }
+        observer.takeRecords();
+        tell();
+      },
+      cover(entry) {
+        if (stopped) return;
+        const key = pageKey();
+        dismissed = cover.undismiss(dismissed, key, entry);
+        // Undo lifts a Show anyway only if this word caused it, never the person's own button.
+        pageState = cover.undoShow(pageState, key, entry);
+        look();
+      },
+      retell() {
+        if (stopped) return;
+        lastCounts = '';
+        tell();
+      },
+    };
   }
 
   // The whole-page cover's look, agreed in the preview (docs/design/cover-preview.html): a panel,

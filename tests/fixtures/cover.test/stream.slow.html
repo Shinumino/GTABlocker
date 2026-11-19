@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A long page that loads slowly (fixture)</title>
+<!-- Sent in two parts with a pause at the PAUSE comment (tests/support/fixtures.mjs), so the
+     page is still loading when covering starts. The page records how many covers there are
+     at the moment the extension marks it "ready": by then its first look must be done. -->
+<script>
+  window.__coversAtReady = null;
+  new MutationObserver(() => {
+    if (window.__coversAtReady === null && document.documentElement.getAttribute('data-gta-blocker') === 'ready') {
+      window.__coversAtReady = document.querySelectorAll('[data-gta-cover]').length;
+    }
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-gta-blocker'] });
+</script>
+</head>
+<body>
+<p id="s-first">GTA 6 trailer, the first part of the page.</p>
+<!-- PAUSE -->
+<p id="s-second">Vice City tour, the second part of the page.</p>
+<p id="s-dog">A dog that opens the fridge.</p>
+</body>
+</html>

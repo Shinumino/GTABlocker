@@ -182,6 +182,13 @@ test('Show anyway shows the page for this visit and gives the tab its title back
   await firefox.evaluate("const p = document.createElement('p'); p.id = 'later'; p.textContent = 'GTA 6 again'; document.body.appendChild(p);");
   await firefox.waitForPage('the new paragraph to be covered', "return document.getElementById('later').hasAttribute('data-gta-cover')");
   assert.equal(await firefox.evaluate(`return !!${PAGE_COVER}`), false, 'the cover came back on a page the person chose to see');
+  // The tab keeps the site's title, and covering still runs (mutation pass, step 4: a Show
+  // anyway that was not remembered put "Hidden page" back and broke covering, and the cover
+  // check alone stayed green).
+  assert.equal(await firefox.evaluate('return document.title'), 'GTA 6: the new map - a video site');
+  await firefox.evaluate("const p = document.createElement('p'); p.id = 'later2'; p.textContent = 'Vice City tonight'; document.body.appendChild(p);");
+  await firefox.waitForPage('the second paragraph to be covered', "return document.getElementById('later2').hasAttribute('data-gta-cover')");
+  assert.equal(await firefox.evaluate('return document.title'), 'GTA 6: the new map - a video site');
   // A link to a place on the same page is still the same visit.
   await firefox.evaluate("location.hash = 'comments';");
   await firefox.evaluate("document.getElementById('later').textContent = 'GTA 6 once more';");

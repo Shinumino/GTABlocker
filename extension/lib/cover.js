@@ -100,5 +100,85 @@
     return title ? matcher.find(title) : null;
   }
 
-  ns.cover = Object.freeze({ chooseBox, layersFor, sizeFor, needsAnchor, pageMatch, HIDDEN_TITLE, MAX_SHARE });
+  // A tab title built from ours ("Hidden page", or a site's "(1) Hidden page") is not the site's.
+  function isOurTitle(title) {
+    return typeof title === 'string' && title.includes(HIDDEN_TITLE);
+  }
+
+  // The whole-page cover, one decision per change of the title or the address. The state is
+  // { cover: null | { key, waiting }, revealedAt, siteTitle }: key is the address without its
+  // #part, revealedAt the address the person pressed Show anyway on, siteTitle the last title
+  // the site itself set. It returns { state, act } and never changes the state it is given;
+  // act is 'open' (with entry), 'keep' (stay covered, the tab says Hidden page again), 'close',
+  // or 'none'. lib/page.js carries the act out.
+  //
+  // Once a page is covered it stays covered until Show anyway, whatever the site does with its
+  // title (a counter like "(1) Hidden page", a blinking "New message!" once lifted it, found in
+  // review). When the address changes under the cover (a site that loads pages in place), the
+  // first title the site sets for the new address decides again.
+  function pageStep(state, { key, title, matcher }) {
+    if (state.cover) {
+      let next = state.cover.key === key ? state.cover : { key, waiting: true };
+      let siteTitle = state.siteTitle;
+      if (!isOurTitle(title)) {
+        siteTitle = title;
+        if (next.waiting) {
+          next = { key, waiting: false };
+          if (!pageMatch(title, matcher)) return { state: { cover: null, revealedAt: state.revealedAt, siteTitle }, act: 'close' };
+        }
+      }
+      return { state: { cover: next, revealedAt: state.revealedAt, siteTitle }, act: 'keep' };
+    }
+    // Show anyway holds for the address it was pressed on; any other address forgets it.
+    if (state.revealedAt === key) return { state, act: 'none' };
+    // Any other address forgets the Show anyway, and why it was pressed.
+    const forgot = state.revealedAt === null || state.revealedAt === undefined ? state : { ...state, revealedAt: null, revealedBy: null };
+    const entry = pageMatch(title, matcher);
+    if (entry) return { state: { ...forgot, cover: { key, waiting: false }, siteTitle: title }, act: 'open', entry };
+    return { state: forgot, act: 'none' };
+  }
+
+  // The person pressed Show anyway on this address.
+  // The page at `key` is shown anyway, by the button or by "Not about GTA" on `cause` (the word):
+  // the cause is kept, so that only that word's Undo lifts it (review: the Undo of any word once
+  // brought back a whole-page cover the person had dismissed with the button).
+  function showAnyway(state, key, cause = 'button') {
+    return { cover: null, revealedAt: key, revealedBy: cause, siteTitle: state.siteTitle };
+  }
+
+  function undoShow(state, key, entry) {
+    if (state.revealedAt !== key || state.revealedBy !== entry) return state;
+    return { ...state, revealedAt: null, revealedBy: null };
+  }
+
+  // The words the person said are not about GTA, for one address: { key, entries }. They hold
+  // through a restart (a word list change, the switch off and on) and end with the address, so
+  // a single-page site that moves on to another page covers them again (review: they once
+  // lived in one run, lost on any restart and kept forever on a single-page site).
+  function dismiss(d, key, entry) {
+    const now = d && d.key === key ? d : { key, entries: [] };
+    return now.entries.includes(entry) ? now : { key, entries: [...now.entries, entry] };
+  }
+
+  function undismiss(d, key, entry) {
+    if (!d || d.key !== key) return d;
+    return { key, entries: d.entries.filter((e) => e !== entry) };
+  }
+
+  function dismissedOn(d, key) {
+    return d && d.key === key ? d.entries : [];
+  }
+
+  // { entry: number of covers }. No prototype, so an own word such as "constructor" or
+  // "__proto__" is counted like any other (it once read Object's own members: review).
+  function countEntries(entries) {
+    const out = Object.create(null);
+    for (const entry of entries) out[entry] = (out[entry] || 0) + 1;
+    return out;
+  }
+
+  ns.cover = Object.freeze({
+    chooseBox, layersFor, sizeFor, needsAnchor, pageMatch, isOurTitle, pageStep, showAnyway, undoShow,
+    dismiss, undismiss, dismissedOn, countEntries, HIDDEN_TITLE, MAX_SHARE,
+  });
 })(globalThis);

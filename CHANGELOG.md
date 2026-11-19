@@ -28,5 +28,22 @@ Not installed in your Firefox yet (that is step 7). In the test Firefox (`run.cm
   too, and so does GTA written inside Chinese, Japanese or Korean text.
 - A few things that are not the game are covered too: GTA as the Toronto area, the San Andreas
   fault, and "los santos" in Spanish.
-- Not there yet: a toolbar switch to turn covers off, your own word list, dog and cat photos
-  on pictures, and rules made for YouTube, Reddit, X, Google and Instagram.
+- **A toolbar icon** (the paw) shows how many things are covered on the page, or "off".
+- **Turn it off** from the toolbar menu (click the icon): "On this site" or "Everywhere". It stays off, even after
+  closing Firefox, until you turn it back on, and pages follow at once, without a reload. A
+  video embedded in a page follows the site you are on.
+- **The toolbar menu lists what was covered here, by word.** "Not about GTA" shows those
+  things again on this page and saves a report; Undo covers them again and takes the report
+  back. For one of your own words the button is "Remove from my list". When something about
+  GTA was not covered, "Report missed GTA" saves the page's address, with a note if you want.
+- **Settings** (from the toolbar menu): your word list (it starts with the built-in words;
+  add your own, remove any; Reset goes back to only the built-in words, and asks first), the
+  sites where it is off, and your reports, which you can copy and send to Claude. Everything
+  stays on this PC. A built-in word added in a later version reaches your list too, unless you
+  removed it.
+- A page saved on your PC (a local file) is covered like any page; only Everywhere turns it off.
+- If you remove or reload the add-on while a page is fully covered, the next copy clears the
+  old cover; after removing it for good, reload the page.
+- Covers made by your own words say "a word from your list", so a site cannot read your list.
+- Not there yet: dog and cat photos on pictures, and rules made for YouTube, Reddit, X, Google
+  and Instagram.

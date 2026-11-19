@@ -37,3 +37,29 @@ test('a request can never reach a file outside its own site folder', () => {
 test('the hostname ".." alone is refused, not mapped to the folder above', () => {
   assert.equal(resolveFixture('..', '/tests/micro/check-repo.test.mjs', root), null);
 });
+
+test('a page named *.slow.html is sent in two parts, with a pause where it says <!-- PAUSE -->', async () => {
+  // A page still loading when covering starts: the only way to see the page marked "ready"
+  // too early, now that covering starts after the settings are read (mutation pass, step 4).
+  const { startFixtureServer, PAUSE_MS, FIXTURES_DIR } = await import('../support/fixtures.mjs');
+  const http = await import('node:http');
+  const fs = await import('node:fs');
+  const server = await startFixtureServer();
+  try {
+    const parts = await new Promise((resolve, reject) => {
+      // Firefox reaches the server by name; Node, which resolves no test name, by address.
+      http.get({ host: '127.0.0.1', port: server.port, path: '/stream.slow.html', headers: { host: `cover.test:${server.port}` } }, (res) => {
+        const got = [];
+        res.on('data', (chunk) => got.push([Date.now(), chunk.toString('utf8')]));
+        res.on('end', () => resolve(got));
+      }).on('error', reject);
+    });
+    const whole = parts.map(([, text]) => text).join('');
+    assert.equal(whole, fs.readFileSync(path.join(FIXTURES_DIR, 'cover.test', 'stream.slow.html'), 'utf8'));
+    const pauseAt = parts.findIndex(([, text]) => text.includes('<!-- PAUSE -->'));
+    assert.ok(pauseAt >= 0, 'the first part ends at the pause');
+    assert.ok(parts.at(-1)[0] - parts[pauseAt][0] >= PAUSE_MS - 50, `the rest came ${parts.at(-1)[0] - parts[pauseAt][0]} ms later`);
+  } finally {
+    await server.close();
+  }
+});
