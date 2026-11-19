@@ -6,14 +6,16 @@
 //
 // The rule proven here, the user's choice of 2026-11-18: the next copy clears what an earlier
 // one left (its whole-page cover with a dead button, the tab title, its covers), and covers
-// the page itself.
+// the page itself. And a video the earlier copy held gets its own sound setting back (review,
+// 2026-11-19: YouTube reuses one video for every Short, and it stayed muted for good).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { useFirefox, EXTENSION_DIR } from '../support/browser-test.mjs';
 import { ADDON_ID, ADDON_PREFS, openMenu, menuKeys, waitForBadge } from '../support/toolbar.mjs';
 
-const session = useFirefox({ extensionDir: EXTENSION_DIR, prefs: ADDON_PREFS, systemAccess: true });
+// Autoplay is allowed so that the Short's video really plays here (see youtube-shorts.test.mjs).
+const session = useFirefox({ extensionDir: EXTENSION_DIR, prefs: { ...ADDON_PREFS, 'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0 }, systemAccess: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function open(host, file) {
@@ -67,3 +69,12 @@ test('covers left by an earlier copy are taken over by the next one: the switch 
   await waitCovered(['v-gta', 'v-online', 'v-vice']);
 });
 
+
+test('a video the earlier copy held gets its own sound back: the next Short not about GTA plays with its sound', async () => {
+  const { firefox } = session;
+  await open('www.youtube.com', 'shorts/gta.html');
+  await firefox.waitForPage('the player covered, its video muted', "return document.getElementById('player-container').hasAttribute('data-gta-cover') && document.getElementById('video').muted");
+  await reinstall();
+  await firefox.evaluate('window.__scroll("cat")');
+  await firefox.waitForPage('the next Short playing with its sound', "const v = document.getElementById('video'); return !document.getElementById('player-container').hasAttribute('data-gta-cover') && !v.paused && !v.muted", { timeoutMs: 8000 });
+});

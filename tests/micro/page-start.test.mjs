@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadExtensionScripts } from '../support/extension-script.mjs';
 
-const { GtaBlocker } = loadExtensionScripts({ files: ['lib/matcher.js', 'lib/cover.js', 'lib/page.js'] });
+const { GtaBlocker } = loadExtensionScripts({ files: ['lib/matcher.js', 'lib/cover.js', 'lib/media.js', 'lib/sites.js', 'lib/page.js'] });
 const matcher = GtaBlocker.matcher.compile(GtaBlocker.matcher.DEFAULT_ENTRIES);
 
 test('page.start refuses to run without label, before it touches anything', () => {

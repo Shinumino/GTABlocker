@@ -38,7 +38,7 @@ test('the manifest loads every lib file, before content.js, in the agreed order'
   const manifest = JSON.parse(fs.readFileSync(path.join(EXTENSION, 'manifest.json'), 'utf8'));
   assert.equal(manifest.content_scripts.length, 1);
   const listed = manifest.content_scripts[0].js;
-  assert.deepEqual(listed, ['lib/matcher.js', 'lib/cover.js', 'lib/settings.js', 'lib/tabs.js', 'lib/page.js', 'content.js']);
+  assert.deepEqual(listed, ['lib/matcher.js', 'lib/cover.js', 'lib/media.js', 'lib/sites.js', 'lib/settings.js', 'lib/tabs.js', 'lib/page.js', 'content.js']);
   assert.deepEqual(manifest.content_scripts[0].css, ['content.css']);
   const background = manifest.background?.scripts ?? [];
   for (const file of fs.readdirSync(path.join(EXTENSION, 'lib'))) {

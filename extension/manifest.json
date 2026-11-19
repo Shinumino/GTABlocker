@@ -50,6 +50,8 @@
       "js": [
         "lib/matcher.js",
         "lib/cover.js",
+        "lib/media.js",
+        "lib/sites.js",
         "lib/settings.js",
         "lib/tabs.js",
         "lib/page.js",

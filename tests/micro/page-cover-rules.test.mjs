@@ -18,8 +18,8 @@ const FRESH = Object.freeze({ cover: null, revealedAt: null, siteTitle: null });
 // step's result. Each state is frozen, so a step that changes its input in place throws.
 function run(steps, state = FRESH) {
   const out = [];
-  for (const { key, title } of steps) {
-    const r = cover.pageStep(state, { key, title, matcher });
+  for (const { key, title, allowed } of steps) {
+    const r = cover.pageStep(state, { key, title, matcher, allowed });
     out.push(r);
     state = deepFreeze(r.state);
   }
@@ -89,7 +89,9 @@ test('a new address under the cover waits for the site title of that address, th
 test('Show anyway is for this visit: the same address stays shown, another one is decided afresh', () => {
   let state = deepFreeze(run([{ key: 'a', title: 'GTA 6 trailer' }])[0].state);
   state = deepFreeze(cover.showAnyway(state, 'a'));
-  assert.deepEqual(plain(state), { cover: null, revealedAt: 'a', revealedBy: 'button', siteTitle: 'GTA 6 trailer' });
+  // The title shown on that address is kept with it: the next address must not take it for its
+  // own (see "the GTA title a page leaves behind" below).
+  assert.deepEqual(plain(state), { cover: null, revealedAt: 'a', revealedBy: 'button', siteTitle: 'GTA 6 trailer', shownTitle: { key: 'a', title: 'GTA 6 trailer' } });
   const rs = run([
     { key: 'a', title: 'GTA 6 trailer' },
     { key: 'a', title: 'GTA 6 trailer (2)' },
@@ -107,6 +109,70 @@ test('coming back to the shown address after another one covers it again', () =>
     { key: 'a', title: 'GTA 6 trailer' },
   ], state);
   assert.deepEqual(rs.map((r) => r.act), ['none', 'open']);
+});
+
+test('a page the site keeps free of the whole-page cover (a Short) closes one that was open, and is never covered', () => {
+  const rs = run([
+    { key: 'w', title: 'GTA 6 trailer' }, // a covered page
+    { key: 's', title: HIDDEN, allowed: false }, // moved in place to a Short
+    { key: 's', title: 'All legends #gta6 - YouTube', allowed: false },
+  ]);
+  assert.deepEqual(rs.map((r) => r.act), ['open', 'close', 'none']);
+  assert.equal(last(rs).state.cover, null);
+});
+
+test('a page with no whole-page cover forgets Show anyway, like any other address (ChatGPT review, 2026-11-19)', () => {
+  // Show anyway on a GTA video, a Short in place, back to the video: covered again, since the
+  // button says "Only for this visit".
+  const state = deepFreeze(cover.showAnyway(run([{ key: 'w', title: 'GTA 6 trailer' }])[0].state, 'w'));
+  const rs = run([
+    { key: 's', title: 'Vice City at night #gta6 - YouTube', allowed: false },
+    { key: 'w', title: 'GTA 6 trailer' },
+  ], state);
+  assert.deepEqual(rs.map((r) => r.act), ['none', 'open']);
+});
+
+test('the GTA title a page leaves behind is not the next address\u{2019}s: the next one waits for its own', () => {
+  // Live, 2026-11-19: on a GTA Short (no whole-page cover there) the YouTube logo moved the
+  // address to Home before the title; Home was covered as about GTA, for good.
+  const rs = run([
+    { key: 's', title: 'All legends #gta6 - YouTube', allowed: false },
+    { key: 'home', title: 'All legends #gta6 - YouTube' }, // the address first, the title not yet
+    { key: 'home', title: HIDDEN }, // ours, while it waits
+    { key: 'home', title: 'YouTube' }, // the site's own title for Home decides
+  ]);
+  assert.deepEqual(rs.map((r) => r.act), ['none', 'open', 'keep', 'close']);
+  assert.equal(rs[1].state.cover.waiting, true);
+  assert.equal(last(rs).state.cover, null);
+});
+
+test('after Show anyway too, the next address waits for its own title', () => {
+  const state = deepFreeze(cover.showAnyway(run([{ key: 'w', title: 'GTA 6 trailer' }])[0].state, 'w'));
+  const rs = run([
+    { key: 'home', title: 'GTA 6 trailer' },
+    { key: 'home', title: 'YouTube' },
+  ], state);
+  assert.deepEqual(rs.map((r) => r.act), ['open', 'close']);
+});
+
+test('a next address whose own title is that same GTA title is still covered', () => {
+  const rs = run([
+    { key: 's', title: 'GTA 6 trailer', allowed: false },
+    { key: 'w', title: 'GTA 6 trailer' },
+    { key: 'w', title: HIDDEN },
+    { key: 'w', title: 'GTA 6 trailer' }, // the site sets its title, the same words
+  ]);
+  assert.deepEqual(rs.map((r) => r.act), ['none', 'open', 'keep', 'keep']);
+  assert.equal(last(rs).state.cover.waiting, false);
+});
+
+test('a title left behind that is not about GTA changes nothing', () => {
+  const rs = run([
+    { key: 's', title: 'A cat meets a cucumber - YouTube', allowed: false },
+    { key: 'home', title: 'A cat meets a cucumber - YouTube' },
+    { key: 'home', title: 'YouTube' },
+  ]);
+  assert.deepEqual(rs.map((r) => r.act), ['none', 'none', 'none']);
 });
 
 test('the matched word comes from the title', () => {

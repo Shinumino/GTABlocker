@@ -127,3 +127,21 @@
 }
 [data-gta-cover][data-gta-layers="after"][data-gta-size="xs"]:not(#\#)::after,
 [data-gta-cover][data-gta-layers="before"][data-gta-size="xs"]:not(#\#)::before { content: "" !important; }
+
+/* ---- a site player being checked (a YouTube Short until its caption is read) ----
+   The user's choice, 2026-11-19: every Short starts covered until its caption is read, and the
+   note says so, so a paused Short does not look broken. One more attribute than the rules above,
+   so it wins over them, the one-line ones included; the smallest covers still show no words. */
+[data-gta-cover][data-gta-checking][data-gta-layers="both"]:not([data-gta-size="xs"]):not(#\#)::after,
+[data-gta-cover][data-gta-checking][data-gta-layers="after"]:not([data-gta-size="xs"]):not(#\#)::after,
+[data-gta-cover][data-gta-checking][data-gta-layers="before"]:not([data-gta-size="xs"]):not(#\#)::before {
+  content: "Checking for GTA\2026" !important;
+}
+
+/* ---- a quiet cover: the stripes, no words ----
+   A caption line inside a Short whose player's cover already says it (the user's choice after
+   round 2: the same words twice on one screen). Last in the file, so it wins over the size
+   rules it ties with. */
+[data-gta-cover][data-gta-quiet][data-gta-layers="both"]:not(#\#)::after { content: none !important; }
+[data-gta-cover][data-gta-quiet][data-gta-layers="after"]:not(#\#)::after,
+[data-gta-cover][data-gta-quiet][data-gta-layers="before"]:not(#\#)::before { content: "" !important; }

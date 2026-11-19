@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GTA 6 trailer 3 - YouTube</title>
+<!-- A stand-in written for the tests, not a copy of YouTube: a video page whose title is about
+     GTA (so it gets the whole-page cover), whose video starts on its own with its sound (a
+     silent sound made here; the Shorts journey allows autoplay), and which then moves in place
+     to a Short, the way YouTube does: __toShorts() changes the address and the page first, the
+     title a moment later. -->
+<style>body { margin: 0; font: 14px/20px sans-serif; }</style>
+</head>
+<body>
+<p id="what">A video page.</p>
+<video id="video" loop width="320" height="180"></video>
+<script>
+  const rate = 8000, n = rate * 3;
+  const wav = new DataView(new ArrayBuffer(44 + n));
+  const text = (at, s) => [...s].forEach((c, i) => wav.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF'); wav.setUint32(4, 36 + n, true); text(8, 'WAVEfmt '); wav.setUint32(16, 16, true);
+  wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, rate, true); wav.setUint32(28, rate, true);
+  wav.setUint16(32, 1, true); wav.setUint16(34, 8, true); text(36, 'data'); wav.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) wav.setUint8(44 + i, 128);
+  const video = document.getElementById('video');
+  video.src = URL.createObjectURL(new Blob([wav.buffer], { type: 'audio/wav' }));
+  window.__play = () => video.play().catch(() => {});
+  window.__toShorts = () => {
+    history.pushState({}, '', '/shorts/cat-1');
+    document.getElementById('what').textContent = 'A Short.';
+    setTimeout(() => { document.title = 'A cat meets a cucumber #shorts - YouTube'; }, 300);
+  };
+  // In place to a page not about GTA (Back to Home, say): the trailer's video stays in the page.
+  window.__toClean = () => {
+    history.pushState({}, '', '/');
+    document.getElementById('what').textContent = 'Home.';
+    setTimeout(() => { document.title = 'YouTube'; }, 300);
+  };
+  window.__play();
+</script>
+</body>
+</html>

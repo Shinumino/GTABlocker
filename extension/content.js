@@ -1,9 +1,9 @@
 // Runs in every page and frame the user opens, after lib/matcher.js, lib/cover.js,
-// lib/settings.js, lib/tabs.js and lib/page.js (the manifest lists them in that order, and
-// scripts listed together share one global scope, where GtaBlocker lives). It reads the
-// user's switch and words (never the reports), asks the background which site the tab is on,
-// and covers when the switch says so, following every change live (the toolbar menu, the
-// settings page), without a reload.
+// lib/media.js, lib/sites.js, lib/settings.js, lib/tabs.js and lib/page.js (the manifest
+// lists them in that order, and scripts listed together share one global scope, where
+// GtaBlocker lives). It reads the user's switch and words (never the reports), asks the
+// background which site the tab is on, and covers when the switch says so, following every
+// change live (the toolbar menu, the settings page), without a reload.
 //
 // Wrapped in a function so that nothing here lands in that shared scope: a top-level const
 // would clash with the same name in a later file and stop it.

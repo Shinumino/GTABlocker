@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clips - a video site</title>
+<!-- A stand-in written for the tests: video cards on a site with no rules of its own, for the
+     general media rule (step 6). One card keeps its video inside a component's shadow tree, the
+     way a player component does; another's video is moved out of the card by the page, the way
+     a site moves a shared player; a third's title changes and stays about GTA (its video's
+     volume events are counted); a fourth is reused for a video not about GTA (__unGta). The
+     first two and the fourth start on their own with a silent sound made here (the
+     journey allows autoplay), so "paused" and "muted" can only be the extension's doing. -->
+<style>
+  body { margin: 0; font: 14px/20px sans-serif; }
+  .card { display: block; width: 360px; margin: 16px; padding: 8px; border: 1px solid #ccc; }
+  video, video-box { display: block; width: 320px; height: 180px; }
+  #free { display: block; width: 360px; min-height: 190px; margin: 16px; }
+</style>
+</head>
+<body>
+<article class="card" id="shadow-card"><h3>GTA 6 trailer breakdown</h3><video-box id="box"></video-box></article>
+<article class="card" id="move-card"><h3>GTA Online heist highlights</h3><video id="mover" loop></video></article>
+<article class="card" id="flicker-card"><h3 id="flicker-title">GTA 6 trailer reactions</h3><video id="flicker" loop></video></article>
+<article class="card" id="turn-card"><h3 id="turn-title">GTA 6 trailer, a first look</h3><video id="turner" loop></video></article>
+<div id="free"></div>
+<script>
+  const rate = 8000, n = rate * 3;
+  const wav = new DataView(new ArrayBuffer(44 + n));
+  const text = (at, s) => [...s].forEach((c, i) => wav.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF'); wav.setUint32(4, 36 + n, true); text(8, 'WAVEfmt '); wav.setUint32(16, 16, true);
+  wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, rate, true); wav.setUint32(28, rate, true);
+  wav.setUint16(32, 1, true); wav.setUint16(34, 8, true); text(36, 'data'); wav.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) wav.setUint8(44 + i, 128);
+  const sound = URL.createObjectURL(new Blob([wav.buffer], { type: 'audio/wav' }));
+  customElements.define('video-box', class extends HTMLElement {
+    constructor() {
+      super();
+      const root = this.attachShadow({ mode: 'open' });
+      const v = document.createElement('video');
+      v.loop = true;
+      v.src = sound;
+      v.style.cssText = 'display: block; width: 320px; height: 180px;';
+      root.append(v);
+    }
+  });
+  const mover = document.getElementById('mover');
+  mover.src = sound;
+  window.__inner = () => document.getElementById('box').shadowRoot.querySelector('video');
+  window.__playInner = () => window.__inner().play().catch(() => {});
+  window.__move = () => document.getElementById('free').appendChild(mover);
+  // The flicker card: its video's volume events are counted; its title changes and stays GTA.
+  const flicker = document.getElementById('flicker');
+  flicker.src = sound;
+  window.__volumeEvents = 0;
+  flicker.addEventListener('volumechange', () => { window.__volumeEvents++; });
+  window.__retitle = () => { document.getElementById('flicker-title').textContent = 'GTA 6 trailer reactions, part 2'; };
+  // The turn card: a tile the site reuses for a video not about GTA (its title changes).
+  const turner = document.getElementById('turner');
+  turner.src = sound;
+  window.__unGta = () => { document.getElementById('turn-title').textContent = 'A cat meets a cucumber'; };
+  window.__playInner();
+  mover.play().catch(() => {});
+  turner.play().catch(() => {});
+</script>
+</body>
+</html>

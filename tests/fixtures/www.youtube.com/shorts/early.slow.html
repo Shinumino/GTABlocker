@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GTA protagonists tribute #shorts #gta6 - YouTube</title>
+<!-- shorts/early.slow.html: a copy of gta.html, sent in two parts (fixtures.mjs), so the Short
+     and its playing video are there while the page is still loading, and its video gets a new
+     source then. Made from gta.html by the
+     test review fix of round 2; keep the two in step. -->
+<!-- A stand-in written for the tests, not a copy of YouTube: the Shorts player shaped like the
+     one YouTube served on 2026-11-19. One Short (ytd-reel-video-renderer) holds the player
+     (#player-container, with the video) and the caption drawn over it
+     (yt-reel-metapanel-view-model), where the words are, in rows: the channel with Subscribe,
+     then the title (yt-shorts-video-title-view-model).
+
+     YouTube reuses the same Short element as the person scrolls, in this order (live,
+     2026-11-19): the next Short's video gets its source and starts ("emptied", "play",
+     "loadstart"), YouTube sets the video's sound back to its own setting while it loads (under
+     the add-on's cover too), the address changes 16 to 245 ms later, and the caption about
+     0.8 s after that. __scroll(name) does the same (150 ms, then 800 ms); with __SPLIT_MS the
+     channel row comes that much before the title row; "same" moves on to a Short whose caption
+     is the very same as the last one's. The video plays a silent sound made here, so "paused"
+     is real: nothing would stop it but the extension. __heard counts the moments the new video
+     played on with its sound (past its start, so a tick of the last one does not count).
+
+     Options in the address: ?muted, the page mutes its own video (its own setting from then
+     on); ?still, it does not start on its own; ?contents, the player box is display: contents
+     (it cannot carry a cover); ?thumb, a picture whose description is about GTA sits in the
+     Short, outside the caption (like the Remix button's picture); ?cat, the first Short is the
+     cat one; ?late, the first video gets its first source 600 ms after the page loaded.
+     __caption(text) changes the title on the same Short; __swapPlayer() puts in a new player
+     box with a new video, playing; __leave() goes in place to a page that is not a Short. -->
+<style>
+  body { margin: 0; background: #0f0f0f; color: #fff; font: 14px/20px sans-serif; }
+  ytd-shorts { display: block; padding: 64px 0 0 400px; }
+  ytd-reel-video-renderer { display: flex; position: relative; width: 737px; height: 819px; }
+  #short-video-container, .player-wrapper { display: block; width: 737px; height: 819px; }
+  #player-container { display: block; position: relative; width: 737px; height: 819px; background: #335; }
+  #shorts-player { display: block; position: relative; width: 737px; height: 819px; }
+  video { display: block; position: absolute; inset: 0; width: 737px; height: 819px; }
+  yt-reel-metapanel-view-model { display: flex; flex-direction: column; position: absolute; left: 16px; bottom: 16px; width: 480px; }
+  .ytReelMetapanelViewModelMetapanelItem { display: block; margin-top: 8px; }
+  yt-shorts-video-title-view-model { display: block; }
+  #title-row { height: 28px; } /* live: 480 x 28 */
+  h1 { font-size: 14px; margin: 0; }
+  button { font: inherit; }
+</style>
+</head>
+<body>
+<ytd-shorts>
+  <ytd-reel-video-renderer id="reel">
+    <div id="short-video-container"><div class="player-wrapper"><div id="player-container"><div id="shorts-player">
+      <video id="video" loop></video>
+    </div></div></div></div>
+    <yt-reel-metapanel-view-model id="meta">
+      <div class="ytReelMetapanelViewModelMetapanelItem" id="channel-row"><span id="channel">@WhizlyEdits</span> <button id="subscribe" type="button">Subscribe</button></div>
+      <div class="ytReelMetapanelViewModelMetapanelItem" id="title-row"><yt-shorts-video-title-view-model><h1><span id="caption">It's time to say goodbye, all legends #gta6</span></h1></yt-shorts-video-title-view-model></div>
+    </yt-reel-metapanel-view-model>
+    <div id="actions" style="position: absolute; right: -70px; top: 400px; width: 60px;"><span>Like</span> <span>1,102</span> <span>Share</span></div>
+  </ytd-reel-video-renderer>
+</ytd-shorts>
+<script>
+  // A silent sound, three seconds long, made here (no file, no network).
+  const rate = 8000, seconds = 3, n = rate * seconds;
+  const wav = new DataView(new ArrayBuffer(44 + n));
+  const text = (at, s) => [...s].forEach((c, i) => wav.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF'); wav.setUint32(4, 36 + n, true); text(8, 'WAVEfmt '); wav.setUint32(16, 16, true);
+  wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, rate, true); wav.setUint32(28, rate, true);
+  wav.setUint16(32, 1, true); wav.setUint16(34, 8, true); text(36, 'data'); wav.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) wav.setUint8(44 + i, 128);
+  const has = (option) => new URLSearchParams(location.search).has(option);
+  let video = document.getElementById('video');
+  const sound = URL.createObjectURL(new Blob([wav.buffer], { type: 'audio/wav' }));
+  // The page's own sound setting, as YouTube keeps it: what it puts back on every load.
+  const OWN_MUTED = has('muted');
+  video.muted = OWN_MUTED;
+  if (!has('late')) video.src = sound;
+  if (has('contents')) document.getElementById('player-container').style.display = 'contents';
+  if (has('thumb')) {
+    const side = document.createElement('div');
+    side.id = 'side';
+    side.style.cssText = 'position: absolute; right: -60px; bottom: 16px; width: 48px;';
+    side.innerHTML = '<button id="thumb" type="button" style="display: inline-block; width: 44px; height: 44px; padding: 0;"><img alt="GTA protagonists tribute" width="40" height="40" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></button>';
+    document.getElementById('reel').appendChild(side);
+  }
+
+  const SHORTS = {
+    gta: { channel: '@WhizlyEdits', caption: "It's time to say goodbye, all legends #gta6", title: 'GTA protagonists tribute #shorts #gta6 - YouTube' },
+    gta2: { channel: '@mapnerds', caption: 'Every secret on the new map #gta6', title: 'Every secret on the new map #gta6 - YouTube' },
+    cat: { channel: '@catclips', caption: 'A cat meets a cucumber #shorts', title: 'A cat meets a cucumber #shorts - YouTube' },
+    vice: { channel: '@nightdrives', caption: 'Vice City at night', title: 'Vice City at night - YouTube' },
+  };
+  const caption = document.getElementById('caption');
+  const channel = document.getElementById('channel');
+  let current = 'gta', moves = 0;
+  if (has('cat')) {
+    current = 'cat';
+    channel.textContent = SHORTS.cat.channel;
+    caption.textContent = SHORTS.cat.caption;
+    document.title = SHORTS.cat.title;
+  }
+  window.__CAPTION_MS = 800;
+  window.__ADDRESS_MS = 150;
+  window.__SPLIT_MS = 0;
+  window.__heard = 0;
+  function listen() { if (!this.paused && !this.muted && this.currentTime > 0) window.__heard++; }
+  video.addEventListener('timeupdate', listen);
+  window.__play = () => video.play().catch(() => {});
+  window.__scroll = (name) => {
+    const next = name === 'same' ? current : name;
+    // The next Short's video first, as YouTube does: a new source, its own sound setting, play;
+    // and the sound setting once more while it loads.
+    video.src = sound;
+    video.muted = OWN_MUTED;
+    window.__play();
+    setTimeout(() => { video.muted = OWN_MUTED; }, 200);
+    setTimeout(() => {
+      history.pushState({}, '', `/shorts/${next}-${++moves}`);
+      document.title = SHORTS[next].title;
+      // Written again even when it is the same: YouTube puts the rows in anew.
+      setTimeout(() => { channel.textContent = SHORTS[next].channel; }, Math.max(0, window.__CAPTION_MS - window.__SPLIT_MS));
+      setTimeout(() => {
+        caption.textContent = SHORTS[next].caption;
+        current = next;
+      }, window.__CAPTION_MS);
+    }, window.__ADDRESS_MS);
+  };
+  window.__caption = (words) => { caption.textContent = words; };
+  window.__swapPlayer = () => {
+    const old = document.getElementById('player-container');
+    window.__oldVideo = video;
+    const fresh = document.createElement('div');
+    fresh.id = 'player-container';
+    fresh.innerHTML = '<div id="shorts-player"><video id="video" loop></video></div>';
+    video = fresh.querySelector('video');
+    video.src = sound;
+    video.addEventListener('timeupdate', listen);
+    old.replaceWith(fresh);
+    window.__play();
+  };
+  // In place to a page that is not a Short: the address first, the title a moment later.
+  window.__leave = () => {
+    history.pushState({}, '', '/watch?v=cat');
+    document.querySelector('ytd-shorts').replaceWith(Object.assign(document.createElement('p'), { textContent: 'A cat video' }));
+    setTimeout(() => { document.title = 'A cat video - YouTube'; }, 300);
+  };
+  if (has('late')) {
+    // No source yet: the first one comes later (it fires "loadstart", but no "emptied").
+    setTimeout(() => { video.src = sound; window.__play(); }, 600);
+  } else if (!has('still')) window.__play();
+  // While the page is still loading (the pause below), the player gets a new source every
+  // 100 ms, as YouTube does when it builds the Short: once the add-on listens, it covers it
+  // before the page has loaded. Whether it did is noted when the page has loaded: if not, the
+  // add-on started too late and the journey says so instead of passing on nothing.
+  const swaps = setInterval(() => { video.src = sound; window.__play(); }, 100);
+  window.__coveredBeforeLoad = null;
+  document.addEventListener('DOMContentLoaded', () => {
+    clearInterval(swaps);
+    window.__coveredBeforeLoad = document.getElementById('player-container').hasAttribute('data-gta-cover');
+  });
+</script>
+<!-- PAUSE -->
+<p>The rest of the page.</p>
+</body>
+</html>

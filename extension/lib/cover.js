@@ -130,7 +130,27 @@
   // title (a counter like "(1) Hidden page", a blinking "New message!" once lifted it, found in
   // review). When the address changes under the cover (a site that loads pages in place), the
   // first title the site sets for the new address decides again.
-  function pageStep(state, { key, title, matcher }) {
+  //
+  // `allowed` is the site's rule for this address (sites.js allowsPageCover): a page where it is
+  // false (a YouTube Short) is never covered, and one that moved there in place loses its cover.
+  // Such a page still goes through this step, like any other address (review, 2026-11-19: it
+  // skipped it, so Show anyway outlived a trip through Shorts, and the next point broke):
+  //
+  // A GTA title shown with no cover (a Short, or after Show anyway) is kept as shownTitle,
+  // { key, title }. On a new address that same title is the last page's, left behind until the
+  // site sets the new one: the cover opens waiting, and the site's own title for the new address
+  // decides, as above. Live, 2026-11-19: the YouTube logo on a GTA Short moved the address to
+  // Home before the title, and Home was covered as about GTA for good.
+  function pageStep(state, { key, title, matcher, allowed = true }) {
+    const own = isOurTitle(title);
+    if (!allowed) {
+      const kept = state.revealedAt === key || state.revealedAt === null || state.revealedAt === undefined
+        ? state : { ...state, revealedAt: null, revealedBy: null };
+      const next = { ...kept, cover: null, siteTitle: own ? state.siteTitle : title };
+      if (!own && pageMatch(title, matcher)) next.shownTitle = { key, title };
+      else if (!own) delete next.shownTitle;
+      return { state: next, act: state.cover ? 'close' : 'none' };
+    }
     if (state.cover) {
       let next = state.cover.key === key ? state.cover : { key, waiting: true };
       let siteTitle = state.siteTitle;
@@ -144,11 +164,19 @@
       return { state: { cover: next, revealedAt: state.revealedAt, siteTitle }, act: 'keep' };
     }
     // Show anyway holds for the address it was pressed on; any other address forgets it.
-    if (state.revealedAt === key) return { state, act: 'none' };
+    if (state.revealedAt === key) {
+      const left = state.shownTitle;
+      if (own || !pageMatch(title, matcher) || (left && left.key === key && left.title === title)) return { state, act: 'none' };
+      return { state: { ...state, shownTitle: { key, title } }, act: 'none' };
+    }
     // Any other address forgets the Show anyway, and why it was pressed.
-    const forgot = state.revealedAt === null || state.revealedAt === undefined ? state : { ...state, revealedAt: null, revealedBy: null };
+    const { shownTitle: left, ...rest } = state;
+    const forgot = rest.revealedAt === null || rest.revealedAt === undefined ? rest : { ...rest, revealedAt: null, revealedBy: null };
+    const stale = Boolean(left) && left.key !== key && left.title === title;
     const entry = pageMatch(title, matcher);
-    if (entry) return { state: { ...forgot, cover: { key, waiting: false }, siteTitle: title }, act: 'open', entry };
+    if (entry) return { state: { ...forgot, cover: { key, waiting: stale }, siteTitle: title }, act: 'open', entry };
+    // Still the title left behind (a word list where it no longer matches): keep knowing it.
+    if (stale) return { state: { ...forgot, shownTitle: left }, act: 'none' };
     return { state: forgot, act: 'none' };
   }
 
@@ -157,7 +185,10 @@
   // the cause is kept, so that only that word's Undo lifts it (review: the Undo of any word once
   // brought back a whole-page cover the person had dismissed with the button).
   function showAnyway(state, key, cause = 'button') {
-    return { cover: null, revealedAt: key, revealedBy: cause, siteTitle: state.siteTitle };
+    const shown = { cover: null, revealedAt: key, revealedBy: cause, siteTitle: state.siteTitle };
+    // The title on show now is this address's: a next address must not take it for its own.
+    if (typeof state.siteTitle === 'string' && state.siteTitle !== '') shown.shownTitle = { key, title: state.siteTitle };
+    return shown;
   }
 
   function undoShow(state, key, entry) {
@@ -192,7 +223,7 @@
   }
 
   ns.cover = Object.freeze({
-    chooseBox, layersFor, sizeFor, needsAnchor, pageMatch, isOurTitle, pageStep, showAnyway, undoShow,
+    chooseBox, canCarry, layersFor, sizeFor, needsAnchor, pageMatch, isOurTitle, pageStep, showAnyway, undoShow,
     dismiss, undismiss, dismissedOn, countEntries, HIDDEN_TITLE, MAX_SHARE,
   });
 })(globalThis);
