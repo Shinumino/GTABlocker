@@ -1,5 +1,5 @@
 // The gate: everything a release must pass, cheapest first. check.cmd runs this. The signing
-// command (step 7, not built yet) will run it first and send nothing to Mozilla on a red run.
+// command (sign.cmd, step 7) runs it first and sends nothing to Mozilla on a red run.
 //
 // There is no CI service behind this project (no remote), so this file is the whole of it.
 // Each step runs as its own process and the first red one stops the run with exit 1. A step

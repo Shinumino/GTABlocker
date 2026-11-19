@@ -6,3 +6,6 @@ web-ext-artifacts/
 .env
 .env.*
 !.env.example
+# What web-ext writes into the source folder after an upload (an upload id; hidden, so never
+# packed): sign_rules.mjs allows exactly this one file in extension/.
+extension/.amo-upload-uuid

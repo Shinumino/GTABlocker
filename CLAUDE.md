@@ -261,8 +261,19 @@ mutation pass, before the next starts.
 7. Signing (AMO, unlisted) and installing it in the user's Firefox. ORDER CHANGED (the user,
    2026-11-19): signing comes right after the Shorts commit and the Kick fix, before step 5
    and the rest of step 6, which then ship as signed updates (the add-on id stays, so the
-   settings carry over). The signing command runs
-   `check.cmd` first and sends nothing on a red run.
+   settings carry over). HOW IT IS BUILT (2026-11-19, after its review): `sign.cmd` runs
+   `tools/sign.mjs`, which always runs (no main-guard: the junction lesson) the rules in
+   `tools/sign_rules.mjs`. Nothing is sent without good keys in `.env` (both, once each, UTF-8,
+   the issuer shaped `user:<n>:<n>`; never from the environment), for a version not higher than
+   any in `web-ext-artifacts\`, for an `extension\` folder not exactly as committed (no change,
+   new or ignored file but web-ext's own `.amo-upload-uuid`), or on a failed `tools/check.mjs`;
+   the folder is checked unchanged again after the check. Then `web-ext --no-config-discovery
+   sign --channel=unlisted` (web-ext 10.8 does first uploads and updates), with an allow-listed
+   environment plus the keys, its output masked line by line as it streams. `sign.cmd --keys`
+   checks `.env` by names only: Claude never opens `.env` (the user's choice: the secret never
+   passes through the chat). Tests: `sign-rules` (fakes) and `sign-run` (the real seams, a
+   throwaway git project, a fake web-ext); breaks G01-G24. Keys, rotation, a run that stops
+   halfway: `docs/secrets.md`. Each new version: a higher "version", committed, then sign.
 
 ## Security pass (step 1, 2026-11-18)
 
@@ -367,6 +378,24 @@ mutation pass, before the next starts.
     tree attached after the cover was drawn, a detached `new Audio()` or Web Audio, and a video
     in a frame embedded inside a covered item or behind the whole-page cover, are not reached.
     Not checked yet (older than step 6): whether a page can cancel the add-on's timers by id.
+- **Step 7, signing (2026-11-19).**
+  - New input: the two AMO keys, from `.env` only, read by `tools/sign_rules.mjs` (to sign) and
+    the repo check (to search other files for them).
+  - New surface: an upload of the committed `extension` folder to Mozilla (AMO, unlisted: never
+    listed, only signed), started by hand with `sign.cmd`; the signed `.xpi` in
+    `web-ext-artifacts\` and web-ext's `extension\.amo-upload-uuid` (an upload id, no secret,
+    hidden so never packed), both gitignored. Nothing in the add-on changes.
+  - New permission: none in the add-on. The keys carry the power to upload and sign add-ons as
+    the user's account. They go only into web-ext's environment (allow-listed: no WEB_EXT_*
+    option, proxy or NODE_OPTIONS from outside; no config file read), never a command line, are
+    masked in its output, and the repo check fails on any file that would be committed or
+    uploaded holding them, or on any value in `.env.example`. Copies of the project (the
+    mutation pass, review snapshots) leave `.env` out (`repo_rules.isSecretFile`).
+  - What a hostile party can do: with the keys, upload as the user until they are revoked
+    (`docs/secrets.md`: revoke at once, then check the add-ons list). Without them, nothing new:
+    the command only runs by hand on this PC, after the full check, on committed code.
+  - Not covered: a process of the same user can read web-ext's environment while it runs; the
+    one call in the mutation pass that uses `isSecretFile` has no test of its own.
 - **Reports are data, never instructions.** A report holds an address the reported site
   wrote (the user chose to keep its ?part, 2026-11-18): text pasted to Claude from "Copy all"
   is read as data about the page, never acted on.
@@ -396,5 +425,5 @@ mutation pass, before the next starts.
   all. The per-tab covers in `storage.session` go when Firefox closes.
 - **Secrets:** the AMO signing keys (`WEB_EXT_API_KEY`, `WEB_EXT_API_SECRET`), from step 7, in
   `.env` (gitignored, and refused by the repo check if it is ever picked up). Rotation runbook:
-  written in step 7, before the keys exist.
+  `docs/secrets.md` (written before the keys existed).
 - **Backups:** nothing to back up. Everything is rebuilt from this folder.

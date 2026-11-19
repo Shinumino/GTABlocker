@@ -1,8 +1,9 @@
 // The mutation pass: break one rule at a time in a fresh copy of the project (in
 // %TEMP%\gtab-mutants, never this folder), run the tests that should catch it, and report red or
 // green. A test that has only ever been green has not proved anything; this is how each one is
-// seen red. M = step 1 (the harness), S = step 2 (matching). Results:
-// docs/mutation-pass-step1.md and docs/mutation-pass-step2.md.
+// seen red. M = step 1 (the harness), S = step 2 (matching), P = step 3 (covering), Q = step 4
+// (toolbar and settings), R = the fixes after trying it, Y and Z = step 6 (YouTube Shorts and the
+// media rule), K = the Kick fix, G = step 7 (signing). Results: docs/mutation-pass-step<n>.md.
 //
 //   node tools/mutation-pass.mjs              baseline, then every break (about 10 minutes)
 //   node tools/mutation-pass.mjs M05 M58b     only these (add "base" for the baseline)
@@ -15,6 +16,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { isSecretFile } from './repo_rules.mjs';
 
 const PROJECT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WORK = path.join(os.tmpdir(), 'gtab-mutants');
@@ -37,6 +39,7 @@ const T = {
   edges: 'tests/macro/toolbar-edges.test.mjs', reload: 'tests/macro/reload.test.mjs',
   sites: 'tests/micro/sites-rules.test.mjs', yt: 'tests/macro/youtube-shorts.test.mjs',
   media: 'tests/micro/media-rules.test.mjs', mcov: 'tests/macro/media-covers.test.mjs',
+  sign: 'tests/micro/sign-rules.test.mjs', signrun: 'tests/micro/sign-run.test.mjs',
 };
 
 // The line in content.js that marks the page once the first look is done.
@@ -551,6 +554,55 @@ const M = [
     [['      if (!own && pageMatch(title, matcher)) next.shownTitle = { key, title };', '      if (false) next.shownTitle = { key, title };']], [T.pcr, T.yt]],
   ['Y46', 'a Short being checked says so', 'the usual note', CSS,
     [[String.raw`  content: "Checking for GTA\2026" !important;`, '']], [T.yt]],
+  // Step 7, the signing command (2026-11-19, after its review): nothing is sent on any refusal.
+  ['G01', 'without good keys nothing runs', 'go on', 'tools/sign_rules.mjs',
+    [['  if (keyFile.problems.length > 0) return {', '  if (false) return {']], [T.sign, T.signrun]],
+  ['G02', 'only a version higher than any signed is sent', 'sign any', 'tools/sign_rules.mjs',
+    [['  if (top !== null && compareVersions(version, top) <= 0) {', '  if (false) {']], [T.sign]],
+  ['G03', 'the whole check runs first', 'skip it', 'tools/sign_rules.mjs',
+    [['  const gate = await seams.runGate();', '  const gate = 0;']], [T.sign, T.signrun]],
+  ['G04', 'a failed check sends nothing', 'send anyway', 'tools/sign_rules.mjs',
+    [['  if (gate !== 0) {', '  if (false) {']], [T.sign, T.signrun]],
+  ['G05', 'what web-ext prints is masked', 'print it as it is', 'tools/sign_rules.mjs',
+    [['(line) => log(mask(line, secrets))', '(line) => log(line)']], [T.sign, T.signrun]],
+  ['G06', 'an unlisted signature, never a listing', 'listed', 'tools/sign_rules.mjs',
+    [["'--channel=unlisted'", "'--channel=listed'"]], [T.sign, T.signrun]],
+  ['G07', 'a failed upload keeps its exit code', 'report success', 'tools/sign_rules.mjs',
+    [['    return code;\n  }\n  if (made.length === 0) {', '    return 0;\n  }\n  if (made.length === 0) {']], [T.sign, T.signrun]],
+  ['G08', 'only the extension folder exactly as committed is sent', 'send any', 'tools/sign_rules.mjs',
+    [['  if (!folder.clean) {', '  if (false) {']], [T.sign, T.signrun]],
+  ['G09', 'a folder that changed during the check sends nothing', 'send it', 'tools/sign_rules.mjs',
+    [["  if (!after.clean || after.tree !== folder.tree || seams.readVersion() !== version) {", '  if (false) {']], [T.sign]],
+  ['G10', 'an ignored file in the extension folder counts (web-ext packs it)', 'only tracked ones', 'tools/sign_rules.mjs',
+    [["['status', '--porcelain', '--ignored', '--untracked-files=all', '--', 'extension']", "['status', '--porcelain', '--untracked-files=all', '--', 'extension']"]], [T.signrun]],
+  ['G11', "web-ext's own upload id in the folder is allowed", 'refuse it', 'tools/sign_rules.mjs',
+    [["l.trim() !== '' && !l.endsWith(`extension/${UPLOAD_ID_FILE}`)", "l.trim() !== ''"]], [T.signrun]],
+  ['G12', 'web-ext gets only the allowed environment', 'everything', 'tools/sign_rules.mjs',
+    [['  for (const [name, value] of Object.entries(base)) if (ALLOWED_ENV.has(name.toUpperCase())) env[name] = value;', '  for (const [name, value] of Object.entries(base)) env[name] = value;']], [T.sign, T.signrun]],
+  ['G13', 'the check gets no keys and no test redirect', 'everything', 'tools/sign_rules.mjs',
+    [["if (!/^(WEB_EXT_|GTAB_)/i.test(name)) env[name] = value;", 'env[name] = value;']], [T.sign]],
+  ['G14', 'no web-ext config file is read', 'let it look', 'tools/sign_rules.mjs',
+    [["Object.freeze(['--no-config-discovery', 'sign',", "Object.freeze(['sign',"]], [T.sign, T.signrun]],
+  ['G15', 'web-ext output is passed on as it comes', 'all at the end', 'tools/sign_rules.mjs',
+    [['          const parts = (rest + chunk).split(/\\r?\\n/);\n          rest = parts.pop();\n          for (const line of parts) onLine(line);', '          rest += chunk;']], [T.signrun]],
+  ['G16', 'web-ext saying yes with no new file is not a success', 'call it one', 'tools/sign_rules.mjs',
+    [["    log(`Mozilla answered, but no new signed file is in ${ARTIFACTS}. Send the lines above to Claude.`);\n    return 1;", "    log(`Mozilla answered, but no new signed file is in ${ARTIFACTS}. Send the lines above to Claude.`);\n    return 0;"]], [T.sign]],
+  ['G17', 'only the new signed file is named', 'name any', 'tools/sign_rules.mjs',
+    [[".filter((name) => !before.includes(name) && name.endsWith('.xpi'))", ".filter((name) => name.endsWith('.xpi'))"]], [T.sign]],
+  ['G18', 'a key twice in .env is refused', 'take the first', 'tools/sign_rules.mjs',
+    [["    if (name in keys) problems.push(`${name} is in .env more than once: keep one line`);\n    else if (value) keys[name] = value;", '    if (value && !(name in keys)) keys[name] = value;']], [T.sign]],
+  ['G19', 'a UTF-16 .env is refused with what to do', 'read it as nothing', 'tools/sign_rules.mjs',
+    [['  if (bytes.includes(0)) return {', '  if (false) return {']], [T.sign]],
+  ['G20', 'an issuer of the wrong shape is refused before the check', 'send it', 'tools/sign_rules.mjs',
+    [['  if (keys.WEB_EXT_API_KEY && !ISSUER.test(keys.WEB_EXT_API_KEY)) {', '  if (false) {']], [T.sign]],
+  ['G21', 'versions compare as numbers', 'as text', 'tools/sign_rules.mjs',
+    [['    const d = (x[i] || 0) - (y[i] || 0);', '    const d = String(x[i] || 0).localeCompare(String(y[i] || 0));']], [T.sign]],
+  ['G22', '.env with a quoted value and a comment is read right', 'keep the quotes', 'tools/repo_rules.mjs',
+    [["    const quoted = /^(['\"])(.*?)\\1(?:\\s+#.*)?$/.exec(value);", "    const quoted = /^(['\"])(.*)\\1$/.exec(value);"]], [T.repo]],
+  ['G23', 'an invisible character in a key is dropped', 'keep it', 'tools/repo_rules.mjs',
+    [['    value = value.replace(/[\\u200B-\\u200D\\u2060\\uFEFF]/g, \'\');\n', '']], [T.repo]],
+  ['G24', 'any case of ".env" is a key file', 'lower case only', 'tools/repo_rules.mjs',
+    [['const ENV_FILE = /^\\.env(\\..+)?$/i;', 'const ENV_FILE = /^\\.env(\\..+)?$/;']], [T.repo]],
   // The Kick report (2026-11-19): a Tailwind named group is a card.
   ['K01', 'a class "group/card" names a card ("/" separates too)', 'only "-" and "_"', COVERJS,
     [['  const CARD_CLASS = /(^|[-_/])(card|post|comment|tile|item|result|entry|tweet|story)$/i;', '  const CARD_CLASS = /(^|[-_])(card|post|comment|tile|item|result|entry|tweet|story)$/i;']], [T.rules, T.cov]],
@@ -594,9 +646,14 @@ const M = [
     [["      else if (act === 'close') closePageCover();", "      else if (act === 'close') { closePageCover(); for (const el of held.keys()) decided.add(el); }"]], [T.yt]],
 ];
 
+// A throwaway copy for one break: never node_modules or .git, and never a file that holds the
+// signing keys (repo_rules.isSecretFile): the copies go to %TEMP%, a few hundred a run.
 function copyProject(dest) {
   fs.rmSync(dest, { recursive: true, force: true });
-  fs.cpSync(PROJECT, dest, { recursive: true, filter: (src) => !/[\\/](node_modules|\.git)([\\/]|$)/.test(src.slice(PROJECT.length)) });
+  fs.cpSync(PROJECT, dest, {
+    recursive: true,
+    filter: (src) => !/[\\/](node_modules|\.git)([\\/]|$)/.test(src.slice(PROJECT.length)) && !isSecretFile(path.basename(src)),
+  });
 }
 
 function run(dir, tests) {

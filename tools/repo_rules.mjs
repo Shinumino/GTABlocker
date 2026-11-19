@@ -25,7 +25,15 @@ const AMO_KEY_PATTERN = /user:\d{4,}:\d{1,6}/;
 // Values shorter than this are placeholders, and an empty one would match every file.
 const MIN_SECRET_LENGTH = 8;
 
-const ENV_FILE = /^\.env(\..+)?$/;
+const ENV_FILE = /^\.env(\..+)?$/i;
+
+// Whether a file of this name holds the signing keys: any .env file (.env.txt too, what Notepad
+// makes of it), but not .env.example, which only names them. ONE rule for the repo check and for
+// every copy of the project: the mutation pass copied .env into %TEMP% for every break (security
+// review, step 7).
+export function isSecretFile(name) {
+  return ENV_FILE.test(name) && name.toLowerCase() !== '.env.example';
+}
 
 // The bytes as UTF-16 text, decoded from a fresh copy of even length. Node 24.19 kills the
 // whole process with no message (Windows reports heap corruption, 0xC0000374; Git Bash showed
@@ -45,7 +53,13 @@ export function findProblems(files, secrets) {
   for (const { path: label, bytes } of files) {
     // A label can end in " (staged)"; the rule is about the file's own name.
     const base = path.posix.basename(label.replace(/ \(staged\)$/, '').replaceAll('\\', '/'));
-    if (ENV_FILE.test(base) && base !== '.env.example') {
+    // .env.example names the keys and must stay empty: open in Notepad, it read as the place to
+    // write them, and with no .env yet no value is known to search for (review, step 7).
+    if (base.toLowerCase() === '.env.example' && parseEnv(bytes.toString('utf8')).some(([, value]) => value !== '')) {
+      problems.push(`${label}: .env.example holds a value: it must stay empty, the keys go in .env`);
+      continue;
+    }
+    if (isSecretFile(base)) {
       problems.push(`${label}: an .env file would be committed (it holds the signing keys)`);
       continue;
     }
@@ -69,8 +83,11 @@ export function parseEnv(text) {
     const match = /^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line);
     if (!match || !SECRET_NAMES.includes(match[1])) continue;
     let value = match[2];
-    const quoted = /^(['"])(.*)\1$/.exec(value);
+    // Quoted, with or without a comment after it (the quotes were kept before: security review).
+    const quoted = /^(['"])(.*?)\1(?:\s+#.*)?$/.exec(value);
     value = quoted ? quoted[2] : value.replace(/\s+#.*$/, '');
+    // An invisible character copied from a web page is not part of a key.
+    value = value.replace(/[\u200B-\u200D\u2060\uFEFF]/g, '');
     pairs.push([match[1], value]);
   }
   return pairs;

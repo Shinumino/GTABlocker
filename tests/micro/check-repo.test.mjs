@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { findProblems, parseEnv, readSecrets, listRepoFiles, gatherFiles } from '../../tools/repo_rules.mjs';
+import { findProblems, parseEnv, readSecrets, listRepoFiles, gatherFiles, isSecretFile } from '../../tools/repo_rules.mjs';
 
 const CHECK_REPO = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'tools', 'check_repo.mjs');
 const fakeIssuer = ['user', '12345678', '901'].join(':');
@@ -106,6 +106,31 @@ test('.env lines are read the way people write them', () => {
   ].join('\r\n')), [['WEB_EXT_API_KEY', 'quoted-key-1234'], ['WEB_EXT_API_SECRET', 'exported-secret-1234']]);
   assert.deepEqual(parseEnv('WEB_EXT_API_KEY=plain-key-1234 # the key from AMO'), [['WEB_EXT_API_KEY', 'plain-key-1234']]);
   assert.deepEqual(parseEnv('WEB_EXT_API_KEY="has # inside-1234"'), [['WEB_EXT_API_KEY', 'has # inside-1234']]);
+  // A quoted value with a comment after it: the quotes were kept, and the repo check then
+  // looked for the wrong value (security review, step 7).
+  assert.deepEqual(parseEnv('WEB_EXT_API_SECRET="quoted-secret-1234" # from AMO'), [['WEB_EXT_API_SECRET', 'quoted-secret-1234']]);
+  // An invisible character copied from a web page is not part of the key.
+  assert.deepEqual(parseEnv('WEB_EXT_API_SECRET=zero\u{200B}width-1234\u{FEFF}'), [['WEB_EXT_API_SECRET', 'zerowidth-1234']]);
+});
+
+test('.env.example names the keys but may never hold one', () => {
+  // With .env.example open in Notepad, "fill in the two values" read as "here": a key written
+  // into it would be committed, and with no .env yet no value is known to look for (wording
+  // and security review, step 7). Any value in it is refused, whatever it looks like.
+  assert.deepEqual(findProblems([file('.env.example', '# comment\nWEB_EXT_API_KEY=\nWEB_EXT_API_SECRET=\n')], []), []);
+  for (const text of [`WEB_EXT_API_SECRET=${fakeSecret}\n`, 'WEB_EXT_API_KEY=anything-at-all\n']) {
+    const problems = findProblems([file('.env.example', text)], []);
+    assert.equal(problems.length, 1, text.slice(0, 20));
+    assert.match(problems[0], /\.env\.example holds a value/);
+    assert.ok(!problems[0].includes(fakeSecret) && !problems[0].includes('anything-at-all'), 'the value was printed');
+  }
+});
+
+test('one rule says which files hold the keys, for every copy of the project (the mutation pass too)', () => {
+  // The mutation pass copied the whole project into %TEMP% for every break, .env included:
+  // once the keys existed, a few hundred copies a run (security review, step 7).
+  for (const name of ['.env', '.env.local', '.env.txt', '.ENV']) assert.equal(isSecretFile(name), true, name);
+  for (const name of ['.env.example', 'env.js', 'environment.md', 'my.env.notes']) assert.equal(isSecretFile(name), false, name);
 });
 
 test('both the environment and .env are searched, so a stale variable cannot hide the real key', () => {
