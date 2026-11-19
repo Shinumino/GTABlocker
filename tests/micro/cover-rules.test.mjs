@@ -184,6 +184,31 @@ test('a class written in camelCase names a card the same way ("ShelfItem", "vide
   }
 });
 
+test('a Tailwind named group names a card too ("group/card", Kick)', () => {
+  // User report, 2026-11-19: on kick.com a GTA stream's title was covered but not its live
+  // preview. The chain from the title up, as Kick built it (live, read-only): the card is the
+  // box Tailwind names "group/card", and "/" was not read as a separator.
+  const chain = [
+    el('h3', { w: 95, h: 20, cls: 'max-w-full truncate' }),
+    el('a', { display: 'flex', w: 95, h: 20, cls: 'inline-flex max-w-full min-w-0 leading-5 select-auto' }),
+    el('div', { display: 'flex', w: 176, h: 20, cls: 'flex w-full max-w-full shrink grow-0 flex-row flex-nowrap justify-between gap-2' }),
+    el('div', { display: 'flex', w: 176, h: 72, cls: 'tv:gap-1 fhd:gap-1.5 flex w-full min-w-0 flex-col items-start' }),
+    el('div', { display: 'flex', w: 240, h: 88, cls: 'tv:py-4 fhd:py-5 flex w-full flex-row flex-nowrap gap-2 lg:px-1.5 lg:py-2 group-has-[[data-card-link]]/card:pointer-events-none' }),
+    el('div', { display: 'flex', w: 240, h: 223, cls: 'next:overflow-visible flex w-full flex-col gap-2 overflow-hidden rounded-[inherit] lg:gap-0' }),
+    el('div', { display: 'flex', position: 'relative', w: 240, h: 223, cls: 'group/card relative flex w-full shrink-0 grow-0 flex-col rounded-[var(--edge-radius-md)] rounded-b-xl' }),
+    el('section', { display: 'grid', w: 1272, h: 1219, cls: 'grid h-full grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-4' }),
+    ...page,
+  ];
+  assert.equal(pick(chain), 6);
+  for (const cls of ['group/item relative', 'flex group/post']) {
+    assert.equal(pick([el('p'), el('div', { cls }), ...page]), 1, cls);
+  }
+  // Only a group named as a card: an opacity step, a longer word or a variant is not one.
+  for (const cls of ['bg-surface/50', 'group/cards', 'group-hover/card:opacity-100', 'group/menu']) {
+    assert.notEqual(pick([el('p'), el('div', { cls }), ...page]), 1, cls);
+  }
+});
+
 test('a climb past the block that holds the text never covers a page-wide container (Reddit)', () => {
   // User report, 2026-11-18: a Reddit search was striped from edge to edge. The match sat in a
   // shadow tree, its wrappers had no box of their own, and the climb reached shreddit-app, the

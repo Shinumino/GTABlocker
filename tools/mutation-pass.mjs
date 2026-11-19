@@ -551,6 +551,9 @@ const M = [
     [['      if (!own && pageMatch(title, matcher)) next.shownTitle = { key, title };', '      if (false) next.shownTitle = { key, title };']], [T.pcr, T.yt]],
   ['Y46', 'a Short being checked says so', 'the usual note', CSS,
     [[String.raw`  content: "Checking for GTA\2026" !important;`, '']], [T.yt]],
+  // The Kick report (2026-11-19): a Tailwind named group is a card.
+  ['K01', 'a class "group/card" names a card ("/" separates too)', 'only "-" and "_"', COVERJS,
+    [['  const CARD_CLASS = /(^|[-_/])(card|post|comment|tile|item|result|entry|tweet|story)$/i;', '  const CARD_CLASS = /(^|[-_])(card|post|comment|tile|item|result|entry|tweet|story)$/i;']], [T.rules, T.cov]],
   // Step 6, round 2 (2026-11-19): the second review's fixes and the user's two decisions.
   ['Z01', 'an empty caption sets no time to look again (no polling)', 'wake anyway', SITESJS,
     [["wakeAt: next.checking && text !== '' ? next.since + PLAYER_WAIT_MS : null", 'wakeAt: next.checking ? next.since + PLAYER_WAIT_MS : null']], [T.sites]],

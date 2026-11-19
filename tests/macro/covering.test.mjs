@@ -248,3 +248,14 @@ test("a YouTube Short is covered whole, its picture too, not only its title", as
   assert.deepEqual(await covers(), [['s-gta', 'gta*', 'l']]);
   assert.equal(await firefox.evaluate("return document.getElementById('s-gta-pic').checkVisibility({ visibilityProperty: true })"), false, 'the picture is hidden under the cover');
 });
+
+test('a Kick stream card is covered whole, its live preview too, not only its title', async () => {
+  // User report, 2026-11-19: on kick.com/browse the title was covered and the live preview
+  // showed. Kick's card is the box Tailwind names "group/card"; the stand-in is shaped like it.
+  const { firefox, fixtures } = session;
+  await firefox.navigate(fixtures.url('kick.com', '/browse.html'));
+  await firefox.waitForPage('the extension to finish its first look', "return document.documentElement.getAttribute('data-gta-blocker') === 'ready'");
+  assert.deepEqual((await covers()).map(([id, word]) => [id, word]), [['k-gta', 'gta*']]);
+  assert.equal(await firefox.evaluate("return document.getElementById('k-gta-pic').checkVisibility({ visibilityProperty: true })"), false, 'the preview is hidden under the cover');
+  await firefox.waitForPage('the live preview paused', "return document.getElementById('k-gta-preview').paused");
+});

@@ -50,7 +50,8 @@ Not installed in your Firefox yet (that is step 7). In the test Firefox (`run.cm
 - **Fixed after trying it:** a Short's tile in a list (search results, the Shorts shelf) is now
   covered whole, picture and title (only its title line was); a Reddit search for GTA no
   longer covers the whole site in stripes (a hidden screen-reader line made the add-on cover
-  Reddit's whole page).
+  Reddit's whole page). On Kick, a stream about GTA is now covered whole, its live preview
+  too (only its title and category lines were).
 - **Watching YouTube Shorts** (tried on the real YouTube, 19 Nov 2026):
   - Each Short starts behind a "Checking for GTA…" cover, paused and muted, until YouTube
     shows its title. That takes about a second. If the next Short's title is exactly the same

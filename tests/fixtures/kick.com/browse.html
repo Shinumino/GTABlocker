@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Browse - a streaming site (test fixture)</title>
+<!-- A stand-in written for the tests, not a copy of Kick: stream cards shaped like the ones
+     kick.com/browse served on 2026-11-19 (Tailwind classes; the card is the box named
+     "group/card", holding the live preview and, below it, the title row). The preview has no
+     words of its own: only the title and the category say GTA. The live preview video plays
+     muted, as a site's preview does. -->
+<style>
+  body { margin: 0; font: 14px/20px sans-serif; background: #0b0e0f; color: #fff; width: 1300px; }
+  section { display: grid; grid-template-columns: 240px 240px; gap: 20px 16px; padding: 16px; }
+  section > div { display: flex; flex-direction: column; position: relative; width: 240px; }
+  .preview { position: relative; display: block; width: 240px; height: 135px; }
+  .preview img, .preview video { position: absolute; inset: 0; width: 240px; height: 135px; display: block; }
+  .preview img { background: #354; }
+  .row { display: flex; gap: 8px; padding: 6px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #777; }
+  .meta { display: flex; flex-direction: column; min-width: 0; }
+  h3 { margin: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<section class="grid h-full grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-4">
+  <div class="group/card relative flex w-full shrink-0 grow-0 flex-col rounded-b-xl" id="k-gta">
+    <div class="next:overflow-visible flex w-full flex-col gap-2 overflow-hidden rounded-[inherit] lg:gap-0">
+      <a class="preview relative block" href="#k-gta-open"><img id="k-gta-pic" alt=""><video id="k-gta-preview" muted loop></video></a>
+      <div class="row flex w-full flex-row flex-nowrap gap-2 lg:px-1.5 lg:py-2">
+        <div class="avatar"></div>
+        <div class="meta flex w-full min-w-0 flex-col items-start">
+          <a class="inline-flex max-w-full min-w-0 leading-5" href="#k-gta-open"><h3 class="max-w-full truncate">GTA VI RUN!</h3></a>
+          <span>runner_tv</span>
+          <span>Grand Theft Auto V</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="group/card relative flex w-full shrink-0 grow-0 flex-col rounded-b-xl" id="k-cat">
+    <div class="next:overflow-visible flex w-full flex-col gap-2 overflow-hidden rounded-[inherit] lg:gap-0">
+      <a class="preview relative block" href="#k-cat-open"><img alt=""></a>
+      <div class="row flex w-full flex-row flex-nowrap gap-2 lg:px-1.5 lg:py-2">
+        <div class="avatar"></div>
+        <div class="meta flex w-full min-w-0 flex-col items-start">
+          <a class="inline-flex max-w-full min-w-0 leading-5" href="#k-cat-open"><h3 class="max-w-full truncate">Cats all day</h3></a>
+          <span>catcam</span>
+          <span>Just Chatting</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+  // A silent sound for the live preview (no file, no network); muted, so it may start on its own.
+  const rate = 8000, n = rate * 3;
+  const wav = new DataView(new ArrayBuffer(44 + n));
+  const text = (at, s) => [...s].forEach((c, i) => wav.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF'); wav.setUint32(4, 36 + n, true); text(8, 'WAVEfmt '); wav.setUint32(16, 16, true);
+  wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, rate, true); wav.setUint32(28, rate, true);
+  wav.setUint16(32, 1, true); wav.setUint16(34, 8, true); text(36, 'data'); wav.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) wav.setUint8(44 + i, 128);
+  const preview = document.getElementById('k-gta-preview');
+  preview.src = URL.createObjectURL(new Blob([wav.buffer], { type: 'audio/wav' }));
+  preview.play().catch(() => {});
+</script>
+</body>
+</html>

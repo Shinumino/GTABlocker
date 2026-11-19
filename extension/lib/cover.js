@@ -33,7 +33,9 @@
   const CARD_NAME = /-(renderer|card|item|post|tile|result|comment|entry|row|cell|lockup)$|-lockup-view-model$|^(shreddit|reddit)-(post|comment)/;
   // A class token that names a card ("comment", "video-card", "search_result"). Whole tokens or
   // their last part only: "post-title" is the title of a post, not the post.
-  const CARD_CLASS = /(^|[-_])(card|post|comment|tile|item|result|entry|tweet|story)$/i;
+  // "/" too: Tailwind names a group by it ("group/card" is Kick's stream card, whose live
+  // preview showed when only the title was covered: user report, 2026-11-19).
+  const CARD_CLASS = /(^|[-_/])(card|post|comment|tile|item|result|entry|tweet|story)$/i;
   // The same last word written in camelCase ("ytGridShelfViewModelGridShelfItem", "videoCard").
   const CARD_CAMEL = /[a-z0-9](Card|Post|Comment|Tile|Item|Result|Entry|Tweet|Story)$/;
   const MAX_SHARE = 0.6;
