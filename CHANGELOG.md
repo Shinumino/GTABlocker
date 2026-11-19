@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 (19 Nov 2026)
 
-Not installed in your Firefox yet (that is step 7). In the test Firefox (`run.cmd`) it now works:
+Signed by Mozilla and installed in your own Firefox. A new version comes as a new signed file:
+install it the same way (about:addons, the gear icon, "Install Add-on From File..."), and your
+words and settings stay. What it does:
 
 - **GTA on a page is covered.** A video tile, a post, a comment, a search result or a line
   about GTA gets a dark striped cover that says "Hidden: this was about GTA" and which word
