@@ -97,13 +97,19 @@
       const r = obj(raw);
       const sw = obj(r.switch);
       const w = obj(r.words);
+      const added = unique(arr(w.added).filter((x) => !isBlank(x))).slice(0, MAX_WORDS);
+      // An own word that this version has built in becomes the built-in one, as typing it in
+      // does (addWord): kept as the person's own, the list showed it twice and its covers said
+      // "a word from your list" (the user's "Rockstar", built in on 2026-11-19).
+      const builtIn = builtInsRepeated(added);
+      const repeated = new Set(builtIn.values());
       return {
         everywhere: typeof sw.everywhere === 'boolean' ? sw.everywhere : true,
         offSites: unique(arr(sw.offSites).map(cleanSite).filter(Boolean)).slice(0, MAX_SITES),
-        added: unique(arr(w.added).filter((x) => !isBlank(x))).slice(0, MAX_WORDS),
+        added: added.filter((x) => !builtIn.has(x)),
         // Only a word still built in can be removed: one dropped from the built-in list is
-        // simply forgotten.
-        removed: unique(arr(w.removed).filter((x) => defaults.includes(x))),
+        // simply forgotten. One the person also has as their own stays in the list.
+        removed: unique(arr(w.removed).filter((x) => defaults.includes(x) && !repeated.has(x))),
         reports: arr(r.reports).map(cleanReport).filter(Boolean).slice(0, MAX_REPORTS),
       };
     }
@@ -149,6 +155,16 @@
 
     function coverWord(s, entry) {
       return isOwn(s, entry) ? OWN_LABEL : entry;
+    }
+
+    // Of the person's own words, the ones that repeat a built-in entry: own word -> that entry.
+    // One reading of the whole list, by the matcher, as builtInFor does for one word.
+    function builtInsRepeated(own) {
+      const found = new Map();
+      for (const r of M.compile([...defaults, ...own]).rejected) {
+        if (r.code === 'duplicate' && r.sameAs < defaults.length) found.set(own[r.index - defaults.length], defaults[r.sameAs]);
+      }
+      return found;
     }
 
     // The built-in entry the text repeats ("Vice  City" is "vice city"), or null. The matcher

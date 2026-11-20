@@ -31,8 +31,9 @@
   // back (a reload left YouTube's reused video muted for good: review, 2026-11-19).
   const CHECKING = 'data-gta-checking';
   const MUTED = 'data-gta-muted';
-  // A cover with no words: a caption line inside a Short whose player's cover already says it
-  // (the user's choice after round 2: the same words twice on one screen).
+  // A cover with no words: a line inside a Short or a reel (its caption, a comment) whose
+  // player's cover already says it (the user's choice after round 2: the same words twice on
+  // one screen). Set and taken off on every pass (quietInItems).
   const QUIET = 'data-gta-quiet';
   // The whole-page cover's element: this prefix and a random rest, and the site's own title on it.
   const HOST_PREFIX = 'gta-blocker-page-';
@@ -273,12 +274,14 @@
     // ---- covering ----
 
     function boxFor(el) {
+      // Inside a site player's item (a Short, a reel) a cover stays inside it: each GTA line
+      // gets its own, the player is decided apart (playersPass), and the item itself is never
+      // covered whole by a line (its side buttons, like and comment, stay).
+      const player = playerHere();
+      const item = player ? itemAround(el, player) : null;
       const chain = [];
       for (let e = el; e && chain.length < MAX_CHAIN; e = parentOf(e)) {
-        // Inside a site player's item (a Short) a cover stays inside it: the caption's GTA line
-        // gets its own, the player is decided apart (playersPass), and the item itself is never
-        // covered whole (its side buttons, like and comments, stay).
-        if (site.player && e.matches(site.player.scope)) break;
+        if (e === item) break;
         chain.push(e);
       }
       const view = { w: win.innerWidth, h: win.innerHeight };
@@ -341,19 +344,25 @@
       return cover.dismissedOn(dismissed, pageKey()).includes(entry);
     }
 
-    function coverFrom(el, entry) {
-      if (!el.isConnected || coveredAncestor(el) || shownHere(entry)) return;
-      const box = boxFor(el);
-      if (!box || box.hasAttribute(COVER)) return;
-      drawCover(box, entry, { quiet: insideItem(box) });
-      covered.set(box, entry);
+    // Whether the person said `entry` is not about GTA where `el` is: inside a reel found from
+    // its video, for that reel only (reelShown); anywhere else, on this page's address.
+    function shownFor(el, entry) {
+      const player = playerHere();
+      if (player && player.key === 'item') {
+        const item = itemAround(el, player);
+        if (item) return reelShownHas(item.querySelector(player.media), entry);
+      }
+      return shownHere(entry);
     }
 
-    // Inside a site player's item (a Short): its player's cover carries the note.
-    function insideItem(el) {
-      if (!site.player) return false;
-      for (let e = parentOf(el); e; e = parentOf(e)) if (e.matches(site.player.scope)) return true;
-      return false;
+    // Inside an item (a Short, a reel) a cover shows the stripes only: playersPass sets that
+    // on every pass (quietInItems), in the same task, so no cover is seen with its note first.
+    function coverFrom(el, entry) {
+      if (!el.isConnected || coveredAncestor(el) || shownFor(el, entry)) return;
+      const box = boxFor(el);
+      if (!box || box.hasAttribute(COVER)) return;
+      drawCover(box, entry);
+      covered.set(box, entry);
     }
 
     function scan(start, options) {
@@ -451,50 +460,175 @@
       decided.clear();
     }
 
-    // ---- a site's player (sites.js: a YouTube Short) ----
+    // ---- a site's player (sites.js: a YouTube Short, an Instagram reel) ----
 
-    // The item (a Short) -> { box: its player box, rule: its sites.playerStep state }.
+    // Each player, by what stays the same while the page changes around it: a named item (a
+    // Short) by its element, a reel found from its video by its video. A reel's block is worked
+    // out again on every pass and changes as the page does (alone, it reaches up to the list;
+    // with a second reel, it is its row): kept by its block, the reel lost its cover for a
+    // moment each time (design, security and correctness review, 2026-11-19).
+    // id -> { item, box: its player box, rule: its sites.playerStep state }.
     const players = new Map();
     const playerCovers = new Map(); // a player box -> its entry, or null while it is checked
     let wakeTimer = null;
-    const restarts = new Set(); // items whose video just got a new source (pageSource)
+    const restarts = new Set(); // players whose video just got a new source (pageSource)
+    // The words the person said are not about GTA for one reel found from its video (its video
+    // -> entries): on Instagram's Reels page every reel shares the page, and the address names
+    // the one being watched, so a word kept per address showed every reel with it, and the next
+    // one played when scrolled to (security and correctness review, 2026-11-19). Kept over a
+    // restart of the add-on, like `dismissed`.
+    const reelShown = given && given.reelShown instanceof WeakMap ? given.reelShown : new WeakMap();
+    function reelShownHas(video, entry) {
+      const words = video ? reelShown.get(video) : undefined;
+      return words !== undefined && words.has(entry);
+    }
 
-    // The player's box, or the first box from it up to the item that can carry a cover: the
-    // same check as any cover (review: a box drawn with both its pseudo-elements, or none at
-    // all, would carry an invisible one). A box that carries the player's cover already keeps
-    // it: its pseudo-elements are then the cover's own, and the check would climb one box higher
-    // on every pass (found by the Shorts journey, 2026-11-19).
-    function playerBox(scope) {
-      for (let e = scope.querySelector(site.player.box); e; e = parentOf(e)) {
-        if (playerCovers.has(e) || cover.canCarry(describe(e))) return e;
-        if (e === scope) break;
+    // The site's player on this page, or null: asked each time, since a site moves between its
+    // pages in place (Instagram from a reel to Explore).
+    function playerHere() {
+      return site.playerAt(win.location.pathname);
+    }
+
+    // The site player's item that holds `el` (or is it), or null. Named items by their selector;
+    // items found from their video (Instagram) by the video in the first box around `el` that
+    // holds one: that video's item, if it holds `el`.
+    function itemAround(el, player) {
+      if (player.kind === 'named') {
+        for (let e = el; e; e = parentOf(e)) if (e.matches(player.scope)) return e;
+        return null;
+      }
+      for (let e = el; e; e = parentOf(e)) {
+        if (e.matches(player.stopAt)) return null;
+        const media = e.matches(player.media) ? [e] : e.querySelectorAll(player.media);
+        if (media.length > 1) return null;
+        if (media.length === 1) {
+          const item = itemOfMedia(media[0], player);
+          return item && item.contains(el) ? item : null;
+        }
       }
       return null;
     }
 
+    // A video's item (sites.itemLevel decides from what is measured here), or null. Worked out
+    // once per pass (`items`, reset with `displays`): boxFor, shownFor and the pass all ask.
+    let items = new Map();
+    function itemOfMedia(el, player) {
+      if (items.has(el)) return items.get(el);
+      const boxes = [];
+      const levels = [];
+      for (let e = parentOf(el); e && !e.matches(player.stopAt); e = parentOf(e)) {
+        const videos = e.querySelectorAll(player.media).length;
+        const posts = new Set();
+        for (const a of e.querySelectorAll(player.postLinks)) posts.add(sites.postOf(a.getAttribute('href')));
+        posts.delete(null);
+        boxes.push(e);
+        levels.push({ videos, posts: posts.size });
+        if (!sites.fitsItem(levels[levels.length - 1])) break; // nothing above can be the item
+      }
+      const at = sites.itemLevel(levels);
+      const item = at === -1 ? null : boxes[at];
+      items.set(el, item);
+      return item;
+    }
+
+    // The players on the page now: [{ id, item }].
+    function playersNowOn(player) {
+      if (player.kind === 'named') return [...doc.querySelectorAll(player.scope)].map((el) => ({ id: el, item: el }));
+      const found = [];
+      for (const el of doc.querySelectorAll(player.media)) {
+        const item = itemOfMedia(el, player);
+        if (item) found.push({ id: el, item });
+      }
+      return found;
+    }
+
+    // Whether a box holds words a person reads: text outside what the page never draws (SKIP:
+    // the SVG <title> of Instagram's icons, "Audio is muted", is one).
+    function hasWords(box) {
+      const walker = doc.createTreeWalker(box, 0x4);
+      for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+        if (t.data.trim() === '') continue;
+        const parent = t.parentElement;
+        if (parent && SKIP.has(parent.localName)) continue;
+        return true;
+      }
+      return false;
+    }
+
+    // The box the player's cover goes on. Named: the player's box, or the first box from it up
+    // to the item that can carry a cover: the same check as any cover (review: a box drawn with
+    // both its pseudo-elements, or none at all, would carry an invisible one). Found from its
+    // video: sites.boxLevel decides from what is measured here, and with no box it can take,
+    // the item itself (a cover too big beats a GTA video playing). A box that carries the
+    // player's cover already keeps it: its pseudo-elements are then the cover's own, and the
+    // check would climb one box higher on every pass (found by the Shorts journey, 2026-11-19).
+    function playerBox(item, id, player) {
+      const carries = (e) => playerCovers.has(e) || cover.canCarry(describe(e));
+      if (player.kind === 'named') {
+        for (let e = item.querySelector(player.box); e; e = parentOf(e)) {
+          if (carries(e)) return e;
+          if (e === item) break;
+        }
+        return null;
+      }
+      const boxes = [];
+      const levels = [];
+      let words = false; // once a box holds words, every box around it does
+      for (let e = id; e && e !== item; e = parentOf(e)) {
+        if (!words && e !== id) words = hasWords(e);
+        boxes.push(e);
+        levels.push({ words, carries: carries(e) });
+      }
+      const at = sites.boxLevel(levels);
+      if (at !== -1) return boxes[at];
+      return carries(item) ? item : null;
+    }
+
     // An item's caption, read whole (its covered GTA line too): the first word it matches that
-    // the person has not said is not about GTA on this address, and the text that tells a new
-    // item apart: its title. The rows change apart, and a channel line that came first made the
-    // last Short's title look new (ChatGPT review, round 2). No caption reads as nothing, which
-    // never decides (design review, round 2: the whole item's text changed with its buttons).
-    function captionOf(scope) {
-      const captionEl = scope.querySelector(site.player.caption);
+    // the person has not said is not about GTA (on this address; for a reel found from its
+    // video, on that reel), and the text that tells a new item apart. Named: its title. The rows
+    // change apart, and a channel line that came first made the last Short's title look new
+    // (ChatGPT review, round 2). No caption reads as nothing, which never decides (design
+    // review, round 2: the whole item's text changed with its buttons). Found from its video:
+    // the whole item is its caption, the comments too (the user's choice: no reliable way to
+    // tell them apart), and what tells it apart is its words outside the player box: the
+    // video's controls carry a label ("Press to play" on the user's saved page) that may change
+    // as it plays.
+    function captionOf(item, id, player, box) {
+      const named = player.kind === 'named';
+      const captionEl = named ? item.querySelector(player.caption) : item;
       if (!captionEl) return { text: '', entry: null };
-      const titleEl = captionEl.querySelector(site.player.title);
+      const titleEl = named ? captionEl.querySelector(player.title) : null;
       const out = collect(captionEl, { all: true });
       const lines = [];
-      for (const pieces of out.blocks.values()) for (const line of pieces) lines.push(line.join(''));
-      for (const [, value] of out.attrs) lines.push(value);
+      const outside = [];
+      // Only a box with no words of its own (the usual one: the video, its controls' labels and
+      // the faint copy) is left out. A box that took words with it (no smaller one could carry
+      // the cover) can hold them all: read only outside it, a GTA reel stayed "Checking" for
+      // good and a clean one never played (security and correctness review, round 2).
+      const own = !named && hasWords(box);
+      const inBox = (el) => !own && box.contains(el);
+      for (const [block, pieces] of out.blocks) {
+        for (const line of pieces) {
+          lines.push(line.join(''));
+          if (!inBox(block)) outside.push(line.join(''));
+        }
+      }
+      for (const [el, value] of out.attrs) {
+        lines.push(value);
+        if (!inBox(el)) outside.push(value);
+      }
+      const shown = player.key === 'item' ? (e) => reelShownHas(id, e) : shownHere;
       let entry = null;
       for (const line of lines) {
         const found = matcher.find(line);
-        if (found && !shownHere(found)) {
+        if (found && !shown(found)) {
           entry = found;
           break;
         }
       }
-      const text = (titleEl || captionEl).textContent.replace(/\s+/g, ' ').trim();
-      return { text, entry };
+      const words = named ? (titleEl || captionEl).textContent : outside.join(' ');
+      return { text: words.replace(/\s+/g, ' ').trim(), entry };
     }
 
     function showPlayer(box, rule) {
@@ -523,43 +657,108 @@
       playerCovers.delete(box);
     }
 
-    // Each item's player decided by sites.playerStep: on every flush, on a new video source
-    // (the next Short starts before its caption comes, so it is decided before a moment of it
-    // is heard: pageSource), and when the wait for a caption that has not changed is over.
+    // A cover inside an item (a Short, a reel) shows the stripes only: the item's player cover
+    // carries the note. Set on every pass, so a cover drawn before its item could be found gets
+    // them too (live, Instagram put the captions in 46 ms before their videos, and three caption
+    // lines kept the full note under their covered reels, 2026-11-19). A player's own box is
+    // never among them, so it keeps its note: a line's cover never goes on a box that carries
+    // one (coverFrom), and a player box is only ever one that can carry a cover (playerBox),
+    // which a covered box cannot (both its pseudo-elements are the cover's). A check for it here
+    // never fired (mutation pass, I28). Never taken off: a cover outliving its item was not seen
+    // (the covers inside go with it), and no stand-in could show one.
+    function quietInItems() {
+      const inItems = new Set([...players.values()].map((p) => p.item));
+      for (const el of covered.keys()) {
+        if (!el.hasAttribute(QUIET) && insideAny(el, inItems)) el.setAttribute(QUIET, '');
+      }
+    }
+
+    // Each player decided by sites.playerStep: on every flush, on a new video source (the next
+    // Short starts before its caption comes, so it is decided before a moment of it is heard:
+    // pageSource), and when the wait for a caption that has not changed is over.
     function playersPass() {
-      if (!site.player) return;
-      const key = pageKey();
+      const player = playerHere();
+      if (!player) {
+        if (players.size === 0) return;
+        // The site moved on in place (Instagram from a reel to Explore): a reel still on the
+        // page keeps its cover until it is read as not about GTA (the user, 2026-11-19: the
+        // cover stays until it is confirmed). Let go: one that is gone, one with no cover (kept
+        // as a reel, a GTA comment under it got stripes with no note: correctness review,
+        // round 2), and one whose word the person has now said is not about GTA here ("Not
+        // about GTA" could not show it: design and correctness review, round 2).
+        for (const [id, had] of [...players]) {
+          const entry = playerCovers.get(had.box);
+          const shown = entry !== undefined && entry !== null && shownHere(entry);
+          if (id.isConnected && had.box.isConnected && playerCovers.has(had.box) && !shown) continue;
+          players.delete(id);
+          dropPlayer(had.box);
+        }
+        quietInItems();
+        return;
+      }
+      // A reel has its own block, so a new address is not a new reel (sites.js: key).
+      const key = player.key === 'item' ? 'item' : pageKey();
       const time = win.performance.now();
       let wake = Infinity;
       const seen = new Set();
-      for (const scope of doc.querySelectorAll(site.player.scope)) {
-        seen.add(scope);
-        const had = players.get(scope);
-        const box = playerBox(scope);
-        // The site put in another player box: the old one is let go, the item keeps its state.
-        if (had && had.box && had.box !== box) dropPlayer(had.box);
+      const inUse = new Set(); // player boxes in use after this pass: never dropped
+      const old = []; // boxes a player had and may have let go
+      for (const { id, item } of playersNowOn(player)) {
+        seen.add(id);
+        const had = players.get(id);
+        const box = playerBox(item, id, player);
+        // The site put in another player box: the old one is let go, the player keeps its state.
+        if (had && had.box !== box) old.push(had.box);
         if (!box) {
-          players.delete(scope);
+          players.delete(id);
           continue;
         }
-        const { text, entry } = captionOf(scope);
-        const restart = restarts.has(scope);
+        inUse.add(box);
+        const restart = restarts.has(id);
+        // A new source is a new reel: the person's word was for the one before (it let the GTA
+        // reel that came in play with its sound: design, security and correctness review, round 2).
+        if (restart && player.key === 'item') reelShown.delete(id);
+        const { text, entry } = captionOf(item, id, player, box);
         const r = sites.playerStep(had ? had.rule : null, { key, caption: text, entry, now: time, restart });
-        players.set(scope, { box, rule: r.state });
+        players.set(id, { item, box, rule: r.state });
         showPlayer(box, r.state);
+        // A reel's lines read before its video came were no reel's: the person's word for the
+        // reel being watched (kept for its address too) left a GTA caption uncovered for good
+        // (security review, round 2). Read its block once more now that it is one.
+        if (!had && player.key === 'item') scan(item);
         if (r.wakeAt !== null) wake = Math.min(wake, r.wakeAt);
       }
       restarts.clear();
-      for (const [scope, had] of [...players]) {
-        if (seen.has(scope)) continue;
-        if (had.box) dropPlayer(had.box);
-        players.delete(scope);
+      for (const [id, had] of [...players]) {
+        if (seen.has(id)) continue;
+        players.delete(id);
+        old.push(had.box);
       }
+      for (const box of old) if (!inUse.has(box)) dropPlayer(box);
+      quietInItems();
       if (wakeTimer !== null) win.clearTimeout(wakeTimer);
       wakeTimer = wake === Infinity ? null : win.setTimeout(() => {
         wakeTimer = null;
         schedule();
       }, Math.max(0, wake - time) + 20);
+    }
+
+    // The reel being watched, among those found from their video: the one whose player box
+    // shows the largest area in the window (by area, not by the share of the box shown: on
+    // Instagram the boxes are the same size). Null when none shows.
+    function watchedReel() {
+      let best = null;
+      let most = 0;
+      for (const [id, p] of players) {
+        const r = p.box.getBoundingClientRect();
+        const w = Math.min(r.right, win.innerWidth) - Math.max(r.left, 0);
+        const h = Math.min(r.bottom, win.innerHeight) - Math.max(r.top, 0);
+        if (w > 0 && h > 0 && w * h > most) {
+          most = w * h;
+          best = id;
+        }
+      }
+      return best;
     }
 
     // A box that changes size gets the cover size that fits it. (sizeFor takes { w, h }: a
@@ -579,6 +778,7 @@
       scheduled = false;
       if (stopped) return;
       displays = new Map();
+      items = new Map();
       visibles = new Map();
       const records = queue.splice(0);
       const rechecks = new Set();
@@ -851,6 +1051,11 @@
       if (stopped || !event.isTrusted) return;
       const el = event.composedPath()[0];
       if (!isMedia(el)) return;
+      // A reel's video no pass has read yet (a new video's first source sends no "emptied"):
+      // read now, before it starts; it played uncovered until the next flush, up to ~30 ms
+      // (security and correctness review, round 2).
+      const player = playerHere();
+      if (player && player.kind === 'found' && !players.has(el)) playersNow();
       mediaStep(el, { type: 'play', covered: heldByCover(el), muted: el.muted });
       tell();
     }
@@ -879,29 +1084,33 @@
 
     // A video got a new source in place of one it had ("emptied"; its first source is not a new
     // item, and held a Short under "Checking" for 4 s: design and correctness review, round 2).
-    // Inside a site player's item that is the next Short swapped into the same element, the
-    // first sign of it: live, YouTube does it 16 to 245 ms before the address changes
-    // (2026-11-19), so the item is checked again from here.
+    // Inside a site player's item that is the next item put into the same element: on YouTube
+    // the next Short, and the first sign of it (live, 16 to 245 ms before the address changes,
+    // 2026-11-19); on Instagram, where each reel has its own block, another reel's video in
+    // one (not seen live). Either way the item is checked again from here.
     function pageSource(event) {
-      if (stopped || !event.isTrusted || !site.player) return;
+      if (stopped || !event.isTrusted) return;
+      const player = playerHere();
       const el = event.composedPath()[0];
-      if (!isMedia(el)) return;
-      for (let e = parentOf(el); e; e = parentOf(e)) {
-        if (!e.matches(site.player.scope)) continue;
-        restarts.add(e);
-        playersNow();
-        tell();
-        return;
-      }
+      if (!player || !isMedia(el)) return;
+      // The player it belongs to: a reel found from its video is that video.
+      let id = null;
+      if (player.kind === 'found') id = players.has(el) || itemOfMedia(el, player) !== null ? el : null;
+      else id = parentOf(el) ? itemAround(parentOf(el), player) : null;
+      if (!id) return;
+      restarts.add(id);
+      playersNow();
+      tell();
     }
 
     // The players decided at once, from a new video source, before a moment of a new Short is
     // heard (a flush is up to 30 ms away). The page's own changes still waiting are kept for the
     // next flush; what this writes is ours.
     function playersNow() {
-      if (!site.player) return;
+      if (!playerHere()) return;
       queue.push(...observer.takeRecords());
       displays = new Map();
+      items = new Map();
       visibles = new Map();
       playersPass();
       observer.takeRecords();
@@ -949,6 +1158,7 @@
     watch(doc);
     function look() {
       displays = new Map();
+      items = new Map();
       visibles = new Map();
       scan(doc.documentElement);
       playersPass();
@@ -968,7 +1178,7 @@
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', first, { once: true });
     else first();
 
-    const kept = () => ({ ...pageState, cover: null, dismissed });
+    const kept = () => ({ ...pageState, cover: null, dismissed, reelShown });
 
     return {
       stop() {
@@ -1000,15 +1210,36 @@
         const key = pageKey();
         dismissed = cover.dismiss(dismissed, key, entry);
         displays = new Map();
+        items = new Map();
         visibles = new Map();
+        // On a page of reels found from their video, the word counts for the reel being watched
+        // only (reelShown): the covers inside the other reels, and their players, stay.
+        const player = playerHere();
+        const found = player !== null && player.key === 'item';
+        const watched = found ? watchedReel() : null;
+        if (watched) {
+          const words = reelShown.get(watched) || new Set();
+          words.add(entry);
+          reelShown.set(watched, words);
+        }
+        const watchedItem = watched ? players.get(watched).item : null;
+        const shows = (box) => {
+          if (!found) return true;
+          const item = itemAround(box, player);
+          return item === null || item === watchedItem;
+        };
         // The person's word counts from now: what this word's covers hold, and a player being
         // checked, never starts by itself later, even when its cover goes because the caption
         // came (ChatGPT review, round 2: pressed during the check, the Short then played).
-        const theirs = [...covered].filter(([, e]) => e === entry).map(([box]) => box);
-        for (const [box, e] of playerCovers) if (e === null || e === entry) theirs.push(box);
+        const theirs = [...covered].filter(([box, e]) => e === entry && shows(box)).map(([box]) => box);
+        for (const [id, p] of players) {
+          if (!playerCovers.has(p.box) || (found && id !== watched)) continue;
+          const e = playerCovers.get(p.box);
+          if (e === null || e === entry) theirs.push(p.box);
+        }
         for (const box of theirs) for (const el of mediaIn(box)) mediaStep(el, { type: 'stay' });
-        for (const [box, e] of [...covered]) if (e === entry) uncover(box);
-        playersPass(); // a Short covered for this word is shown: the word now counts as shown here
+        for (const [box, e] of [...covered]) if (e === entry && shows(box)) uncover(box);
+        playersPass(); // a Short or reel covered for this word is shown: it now counts as shown there
         if (pageCover && pageCover.entry === entry) {
           pageState = cover.showAnyway(pageState, key, entry);
           closePageCover();
@@ -1021,6 +1252,10 @@
         if (stopped) return;
         const key = pageKey();
         dismissed = cover.undismiss(dismissed, key, entry);
+        // On a page of reels: for the reel being watched, as "Not about GTA" was.
+        const player = playerHere();
+        const watched = player && player.key === 'item' ? watchedReel() : null;
+        if (watched && reelShown.has(watched)) reelShown.get(watched).delete(entry);
         // Undo lifts a Show anyway only if this word caused it, never the person's own button.
         pageState = cover.undoShow(pageState, key, entry);
         look();

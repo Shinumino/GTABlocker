@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.1.1 (19 Nov 2026)
+
+Install it the same way as 0.1.0 (about:addons, the gear icon, "Install Add-on From File..."):
+it replaces 0.1.0, and your words and settings stay.
+
+- **Instagram Reels** (you reported that only the text was covered and the video played):
+  - On the Reels page, and on a reel opened from a link, a reel whose text mentions GTA gets
+    the "Hidden: this was about GTA" cover over its video and its sound button, and the video
+    stays paused and muted. Its text is everything next to the video: the name, the caption,
+    the music, and the comments shown under it.
+  - Each line of that text that mentions GTA gets a plain striped cover. The other lines stay,
+    and so do the Follow, like and comment buttons.
+  - A comment about GTA covers its reel too, even when the reel itself is not about GTA.
+  - A reel that is not about GTA plays as usual, also when you scroll back and forth.
+    Instagram brings each reel's text together with its video, so a reel is checked at once
+    and you will rarely see "Checking for GTA…" there.
+  - "Not about GTA" in the toolbar menu shows the reel you are watching again; it counts for
+    that reel only. Its sound comes back, but it stays paused until you press play.
+  - The toolbar icon counts every GTA reel Instagram has loaded on the page, not only the one
+    you are watching. A GTA reel usually counts 2: its video and its caption line.
+  - Tried on the real Instagram while logged out (19 Nov 2026). Logged in, it was tried only
+    on a test page built like the one you saved, so if a GTA reel still plays for you, use
+    "Report missed GTA" on it.
+  - Not yet: the Instagram feed, Explore, Stories, a post opened from a link, and the reels on
+    a profile page are covered only as in 0.1.0 (their text and pictures), so a GTA video
+    there can still play.
+- **"Rockstar" on its own now counts as GTA** (you found a Short that said only "Rockstar" and
+  played: only "Rockstar Games" counted). It also covers things that are not the game:
+  Post Malone's song "rockstar", the Rockstar Energy drink, and lines like "a real rockstar
+  developer". "Rock star" as two words, and "rockstars", do not count.
+  - You added "Rockstar" to your own list: it becomes the built-in word, so the list shows it
+    once, and its covers say "(matched: rockstar)" instead of "a word from your list".
+
 ## 0.1.0 (19 Nov 2026)
 
 Signed by Mozilla and installed in your own Firefox. A new version comes as a new signed file:

@@ -15,7 +15,9 @@
      the add-on's cover too), the address changes 16 to 245 ms later, and the caption about
      0.8 s after that. __scroll(name) does the same (150 ms, then 800 ms); with __SPLIT_MS the
      channel row comes that much before the title row; "same" moves on to a Short whose caption
-     is the very same as the last one's. The video plays a silent sound made here, so "paused"
+     is the very same as the last one's; __scroll(name, true) moves on with no new source, the
+     video playing on (not seen live: it pins that a new address alone starts a check on
+     YouTube). The video plays a silent sound made here, so "paused"
      is real: nothing would stop it but the extension. __heard counts the moments the new video
      played on with its sound (past its start, so a tick of the last one does not count).
 
@@ -26,8 +28,7 @@
      cat one; ?late, the first video gets its first source 600 ms after the page loaded;
      ?nocaption, the Short has no caption at all (its side buttons' words stay). __fight() makes
      the page turn the sound back on every time it is turned off; __overlay(text) puts text
-     inside the player box.
-     __caption(text) changes the title on the same Short; __swapPlayer() puts in a new player
+     inside the player box. __caption(text) changes the title on the same Short; __swapPlayer() puts in a new player
      box with a new video, playing; __leave() goes in place to a page that is not a Short. -->
 <style>
   body { margin: 0; background: #0f0f0f; color: #fff; font: 14px/20px sans-serif; }
@@ -106,14 +107,16 @@
   function listen() { if (!this.paused && !this.muted && this.currentTime > 0) window.__heard++; }
   video.addEventListener('timeupdate', listen);
   window.__play = () => video.play().catch(() => {});
-  window.__scroll = (name) => {
+  window.__scroll = (name, keepSource = false) => {
     const next = name === 'same' ? current : name;
     // The next Short's video first, as YouTube does: a new source, its own sound setting, play;
     // and the sound setting once more while it loads.
-    video.src = sound;
-    video.muted = OWN_MUTED;
-    window.__play();
-    setTimeout(() => { video.muted = OWN_MUTED; }, 200);
+    if (!keepSource) {
+      video.src = sound;
+      video.muted = OWN_MUTED;
+      window.__play();
+      setTimeout(() => { video.muted = OWN_MUTED; }, 200);
+    }
     setTimeout(() => {
       history.pushState({}, '', `/shorts/${next}-${++moves}`);
       document.title = SHORTS[next].title;

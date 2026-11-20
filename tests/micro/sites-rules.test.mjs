@@ -1,10 +1,12 @@
 // extension/lib/sites.js: the rules one site gets on top of the general ones (step 6). A site's
-// rule says whether its pages may get the whole-page cover, and names its media player, if it
-// has one the general rules cannot handle. The player's own rule (sites.playerStep) decides,
-// for one Short, when its player is covered while it is checked, covered as about GTA, or
-// shown: decided with the user, 2026-11-19 (every Short starts under "Checking for GTA..."
-// until its caption is read; a caption that has not changed yet is not the new Short's). All
-// plain logic; page.js carries it out, and the macro tests check that in Firefox. Runs alone:
+// rule says whether its pages may get the whole-page cover, and gives its media player on a
+// page, if it has one the general rules cannot handle: named by selectors (YouTube Shorts) or
+// found from its video (Instagram Reels: itemLevel, boxLevel and postOf decide). The player's
+// own rule (sites.playerStep) decides, for one Short or reel, when its player is covered while
+// it is checked, covered as about GTA, or shown: decided with the user, 2026-11-19 (every
+// Short starts under "Checking for GTA..." until its caption is read; a caption that has not
+// changed yet is not the new Short's). All plain logic; page.js measures the page and carries
+// it out, and the macro tests check that in Firefox. Runs alone:
 //   node --test tests/micro/sites-rules.test.mjs
 
 import { test } from 'node:test';
@@ -26,9 +28,108 @@ test('YouTube Shorts get no whole-page cover; every other YouTube page may (user
   }
 });
 
+const YOUTUBE_PLAYER = {
+  kind: 'named', scope: 'ytd-reel-video-renderer', box: '#player-container', caption: 'yt-reel-metapanel-view-model',
+  title: 'yt-shorts-video-title-view-model', key: 'address',
+};
+
 test('YouTube names its Shorts player: the Short, its player box and its caption (live DOM, 2026-11-19)', () => {
-  assert.deepEqual(plain(sites.rulesFor('www.youtube.com').player),
-    { scope: 'ytd-reel-video-renderer', box: '#player-container', caption: 'yt-reel-metapanel-view-model', title: 'yt-shorts-video-title-view-model' });
+  // On every YouTube page: the player is only found where a Short is.
+  for (const path of ['/shorts/3Gf1PYunHLY', '/watch', '/']) {
+    assert.deepEqual(plain(sites.rulesFor('www.youtube.com').playerAt(path)), YOUTUBE_PLAYER, path);
+  }
+});
+
+// Instagram Reels (the user's report, 2026-11-19: the caption was covered, the GTA video
+// played). Instagram scrambles its class names, so a reel is found from its video (itemLevel
+// and boxLevel below). Each reel is its own block (live: the next reel is not swapped into the
+// same elements), so a reel's check starts when it appears and when its video gets a new
+// source, not when the address changes (it changes with every reel); its text is read on
+// every pass. The user chose: the Reels page and a single reel only; feed, Explore and Stories
+// later.
+const INSTAGRAM_PLAYER = {
+  kind: 'found', media: 'video', postLinks: 'a[href*="/p/"], a[href*="/reel/"]', stopAt: 'body, main, [role="main"]', key: 'item',
+};
+
+test('Instagram: the Reels page and a single reel get a player found from its video', () => {
+  for (const host of ['www.instagram.com', 'instagram.com', 'WWW.Instagram.COM', 'www.instagram.com.']) {
+    const r = sites.rulesFor(host);
+    // Reel codes are base64url: "_" and "-" are part of them. A reel shared from a profile can
+    // be addressed under its name (/<name>/reel/<code>/; correctness review, 2026-11-19).
+    for (const path of ['/reels/Df7SJWPh8Ro/', '/reels/Df7SJWPh8Ro', '/reel/Df7ql1DJKp4/', '/reels/', '/reels',
+      '/reels/C_x-9aBcDeF/', '/reel/C_x-9aBcDeF/', '/tutorial_info/reel/Df7ql1DJKp4/', '/tutorial.info_2/reel/C_x-9aBcDeF']) {
+      assert.deepEqual(plain(r.playerAt(path)), INSTAGRAM_PLAYER, `${host}: ${path}`);
+    }
+    // Its titles say only "Instagram" (live and the user's saved page): the whole-page card can
+    // stay allowed there, it never comes.
+    assert.equal(r.allowsPageCover('/reels/Df7SJWPh8Ro/'), true, host);
+  }
+});
+
+test('Instagram: a link\u{2019}s post is its code, from /p/<code> or /reel/<code>, a comment\u{2019}s own link included; anything else is no post', () => {
+  // A reel's block links to one post at most: live, a single reel's comments each link to
+  // themselves under the reel's own code (/p/<code>/c/<id>/, 13 of them), and counting links
+  // instead of posts cut the reel down to its bare video, with nothing to read (2026-11-19).
+  for (const [href, code] of [
+    ['/p/Df7SJWPh8Ro/', 'Df7SJWPh8Ro'], ['/reel/Df7ql1DJKp4/', 'Df7ql1DJKp4'], ['/reel/Df7ql1DJKp4', 'Df7ql1DJKp4'],
+    ['/p/Df7SJWPh8Ro/c/17896767150439835/', 'Df7SJWPh8Ro'], ['https://www.instagram.com/p/Df7SJWPh8Ro/', 'Df7SJWPh8Ro'],
+    ['/tutorial_info/p/Df7SJWPh8Ro/', 'Df7SJWPh8Ro'], ['/tutorial_info/reel/Df7ql1DJKp4/', 'Df7ql1DJKp4'],
+    ['/p/C_x-9aBcDeF/', 'C_x-9aBcDeF'],
+  ]) assert.equal(sites.postOf(href), code, href);
+  for (const href of ['/reels/audio/390532918118706/', '/tutorial_info/reels/', '/tutorial_info/', '/explore/tags/gta6/', '/p/',
+    '/reels/Df7SJWPh8Ro/', '/xp/abc/', '/preel/abc/', '', null, undefined, 42]) {
+    assert.equal(sites.postOf(href), null, String(href));
+  }
+});
+
+test('Instagram: every other page keeps the general rules (feed, Explore, posts, a profile\u{2019}s reels, audio pages)', () => {
+  const r = sites.rulesFor('www.instagram.com');
+  for (const path of ['/', '/explore/', '/p/Df7SJWPh8Ro/', '/tutorial_info/reels/', '/reels/audio/390532918118706/',
+    '/stories/tutorial_info/123/', '/reelsx/', '/reel/', '/direct/inbox/', '/tutorial_info/p/Df7SJWPh8Ro/',
+    '/a/b/reel/Df7ql1DJKp4/', '', null, undefined]) {
+    assert.equal(r.playerAt(path), null, String(path));
+  }
+});
+
+test('every player a site gives is one of the two kinds, with all of its fields and nothing else', () => {
+  // page.js tells the kinds apart by `kind`; a player with fields of both, or missing one,
+  // would be read half one way and half the other (design review, 2026-11-19).
+  const FIELDS = { named: ['caption', 'box', 'key', 'kind', 'scope', 'title'], found: ['key', 'kind', 'media', 'postLinks', 'stopAt'] };
+  for (const [host, path] of [['www.youtube.com', '/shorts/x'], ['www.instagram.com', '/reels/x/']]) {
+    const player = sites.rulesFor(host).playerAt(path);
+    assert.ok(Object.isFrozen(player), host);
+    assert.deepEqual(Object.keys(player).sort(), FIELDS[player.kind].sort(), host);
+    assert.ok(['address', 'item'].includes(player.key), host);
+  }
+});
+
+// ---- finding a reel from its video, and its cover's box (pure: page.js measures, these decide) ----
+
+test('a reel\u{2019}s item: the highest box around its video with no other video and links to one post at most', () => {
+  // Each level: the boxes from the video's parent up to the page's main area, never reaching it.
+  const L = (videos, posts) => ({ videos, posts });
+  assert.equal(sites.itemLevel([L(1, 0), L(1, 0), L(1, 1), L(3, 1)]), 2, 'the reels list holds three videos');
+  assert.equal(sites.itemLevel([L(1, 0), L(1, 1), L(1, 1), L(1, 4)]), 2, 'More posts links to other posts');
+  assert.equal(sites.itemLevel([L(1, 0), L(1, 0)]), 1, 'up to the main area: the highest box below it');
+  assert.equal(sites.itemLevel([L(2, 0)]), -1, 'a box with two videos is no reel');
+  assert.equal(sites.itemLevel([L(1, 2)]), -1);
+  assert.equal(sites.itemLevel([]), -1, 'the video right under the main area');
+});
+
+test('a reel\u{2019}s cover box: the highest box around the video with no words that can carry a cover, else the first that can', () => {
+  // Each level: the video itself first, then each box up to the item (never the item itself).
+  // The highest box with no words takes in the controls and the faint copy of the reel's picture
+  // Instagram draws around the video, and stops below the name and caption (live, 2026-11-19).
+  const L = (words, carries) => ({ words, carries });
+  assert.equal(sites.boxLevel([L(false, false), L(false, true), L(false, true), L(true, true)]), 2);
+  assert.equal(sites.boxLevel([L(false, false), L(false, true), L(false, false), L(true, true)]), 1, 'the highest one that can carry');
+  // Words in the video's own wrapper (a "Paid partnership" label): the first box that can carry
+  // a cover, words or not; no cover at all brought back the reported bug (security and
+  // correctness review, 2026-11-19).
+  assert.equal(sites.boxLevel([L(false, false), L(true, true), L(true, true)]), 1);
+  assert.equal(sites.boxLevel([L(false, false), L(true, false), L(true, true)]), 2);
+  assert.equal(sites.boxLevel([L(false, false)]), -1, 'none: page.js covers the item itself');
+  assert.equal(sites.boxLevel([]), -1);
 });
 
 test('the mobile site is a site of its own: it keeps the general rules (its Shorts are other elements)', () => {
@@ -36,14 +137,16 @@ test('the mobile site is a site of its own: it keeps the general rules (its Shor
   // a GTA Short there got no cover at all (review, 2026-11-19). Settings treat it apart too.
   const r = sites.rulesFor('m.youtube.com');
   assert.equal(r.allowsPageCover('/shorts/abc'), true);
-  assert.equal(r.player, null);
+  assert.equal(r.playerAt('/shorts/abc'), null);
 });
 
 test('a site with no rules of its own, or a look-alike name, gets the general ones', () => {
-  for (const host of ['www.reddit.com', 'x.com', 'example.test', 'youtube.com.evil.test', 'notyoutube.com', 'youtube.co', 'www.m.youtube.com', '', null, undefined, 42]) {
+  for (const host of ['www.reddit.com', 'x.com', 'example.test', 'youtube.com.evil.test', 'notyoutube.com', 'youtube.co',
+    'www.m.youtube.com', 'm.instagram.com', 'instagram.com.evil.test', 'notinstagram.com', '', null, undefined, 42]) {
     const r = sites.rulesFor(host);
     assert.equal(r.allowsPageCover('/shorts/abc'), true, String(host));
-    assert.equal(r.player, null, String(host));
+    assert.equal(r.playerAt('/reels/abc/'), null, String(host));
+    assert.equal(r.playerAt('/shorts/abc'), null, String(host));
   }
 });
 

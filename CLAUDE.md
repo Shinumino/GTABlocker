@@ -186,8 +186,9 @@ mutation pass, before the next starts.
        extension), and every one is still checked for shape; counts are capped, since a hostile
        page decides what its content script sees.
      - Stored as three keys: `switch`, `words` (what was added and removed, so a later
-       version's new built-in word reaches an edited list) and `reports`. Pages read only the
-       first two (reports are browsing history).
+       version's new built-in word reaches an edited list; an own word that a later version
+       builds in becomes the built-in one, as typing it in does) and `reports`. Pages read only
+       the first two (reports are browsing history).
      - A page's covering never waits more than 1 s for the background, and only Firefox's own
        events count (a page can fake pagehide on window, as often as it likes).
    - **Testing the real menu:** the test Firefox only (never the user's) starts with
@@ -223,8 +224,9 @@ mutation pass, before the next starts.
    since the player's note already says it.
    HOW IT IS BUILT (2026-11-19, after the round 1 and round 2 reviews):
    - `lib/sites.js` (pure): `rulesFor(host)` gives `allowsPageCover(pathname)` (false on
-     YouTube `/shorts` and `/shorts/<id>`) and `player` ({ scope, box, caption, title }
-     selectors); only "www." is stripped, so m.youtube.com keeps the general rules.
+     YouTube `/shorts` and `/shorts/<id>`) and `playerAt(pathname)` (YouTube: { scope, box,
+     caption, title } selectors, key 'address', on every page); only "www." is stripped, so
+     m.youtube.com keeps the general rules.
      `playerStep` decides one Short: a new address, or a new video source (`restart`), starts a
      check ("Checking for GTA...", whatever the last Short was); the TITLE row on the page is
      not trusted until it changes (the rows change apart); an empty one never decides and sets
@@ -254,6 +256,63 @@ mutation pass, before the next starts.
    YouTube turns its video's sound back on under the cover while it loads the next Short (it
    stays paused; a play is paused and muted at once). ArrowDown does not move on in the test
    Firefox even without the add-on. Journeys: `tests/macro/youtube-shorts`, `media-covers`.
+   INSTAGRAM REELS, pulled ahead of step 5 by the user's first report from real use
+   (2026-11-19: only the caption was covered, the GTA video played; each reel is one
+   screen-sized block, over the 60% card limit). DECIDED (the user): the Reels page and a single
+   reel now (`/reels/`, `/reels/<code>/`, `/reel/<code>/`, `/<name>/reel/<code>/`), the feed,
+   Explore, Stories, posts and profile reels later; the same as Shorts (cover, pause and mute
+   until the reel is read; its GTA lines striped; "Not about GTA" for that reel only);
+   everything in the reel's block counts, the comments too (no reliable way to tell the caption
+   from them). HOW IT IS BUILT (after its two review rounds, 2026-11-19,
+   `docs/review-instagram.md`):
+   - `sites.js`: players are of two kinds. YouTube's is 'named' (selectors). Instagram's is
+     'found' from its video (no names: Instagram scrambles its classes): { media, postLinks,
+     stopAt: 'body, main, [role="main"]', key: 'item' }. Pure, micro-tested: `itemLevel` (the
+     item is the highest box around the video with no other video and links to one post at
+     most, one test per box in `fitsItem`, which page.js also uses to stop measuring; `postOf`
+     reads a link's post, and a comment's own link /p/<code>/c/<id>/ is the same post) and
+     `boxLevel` (the cover goes on the highest box around the video with no words that can
+     carry a cover, which takes in the faint copy of the reel's picture Instagram draws around
+     it; with words on the video itself, the first box that can carry one; with none, page.js
+     covers the item itself if it can carry a cover, and otherwise there is none).
+   - `page.js` measures each box for them, once per pass per video (`items`, reset with
+     `displays`). A found player is kept by its VIDEO: its block changes as the page does
+     (alone, it reaches up to the list; with a second reel, it is its row), and kept by its
+     block it lost its cover for a moment each time. A box still in use is never dropped. Key
+     'item': a reel's check starts when it appears and on a new video source, never on a new
+     address (it changes with every reel; checking on it covered every clean reel for 4 s); its
+     text is read on every pass, and what tells a new reel apart is its words outside the
+     player box (the controls' label, "Press to play", may change as it plays), or all its
+     words when the box holds words of its own (a fallback box can hold them all: read only
+     outside it, the reel was never decided). A reel's video no pass has read yet is read at
+     its first "play" (a first source sends no "emptied": it played uncovered until the next
+     flush), and its block is read once more when its video first comes (a caption read before
+     was no reel's). "Not about GTA", where the player's key is 'item', counts for the reel
+     being watched (`watchedReel`: the largest area shown in the window), kept by its video
+     (`reelShown`, kept when the switch is turned off and on, or the word list changes) and
+     forgotten on a new source (the next reel in that video played otherwise): kept per
+     address, it showed every reel with that word and the next one played. Off a Reels page in
+     place, a reel still on the page and covered keeps its cover (the user's rule: it stays
+     until it is read as not about GTA); one gone, uncovered, or whose word the person has
+     said is not about GTA there is let go. `quietInItems` stripes every cover inside an item on
+     every pass, never a player's own box (live, the captions came 46 ms before their videos,
+     so a caption was read before its block was a reel); it never takes stripes off (a cover
+     outliving its item was not seen).
+   Live facts (2026-11-19, logged out; the user's saved logged-in page, taken before the fix,
+   for its shape): each reel its own block with its own video, caption in from the start
+   (the full caption, also on the saved page); the address changes per reel (pause, address
+   +1 ms, class changes on pictures 13 to 24 ms after the address, play 47 ms after it);
+   captions 46 ms before videos on load; logged out, a login box after ~3 reels; logged in,
+   the wordless box is the one marked `data-virtualized`, and the controls carry
+   aria-label "Press to play"; titles are "Instagram" (so no whole-page card); on a single
+   reel's page, 13 comment links under its own code, and the reel and "More posts" (links to
+   10 other posts, shown below it) share the next box up. Cost, measured by copying a pass's
+   DOM work into the live page: 0.84 ms with 4 reels, 0.40 ms on a single reel (the matcher's
+   reading of the text not included); Instagram changed the page once in 5 s of playback.
+   Journeys: `tests/macro/instagram-reels` (stand-ins `www.instagram.com/reels/gtareel/` and
+   `reel/single/`). A stand-in's class names must not end in a word the general card rule
+   reads (CARD_CLASS: post, comment, item...): "post" and "comment" made it fire where live it
+   does not.
    If a site needs words of its own, give it its own matcher: adding them to the user's list
    would take places in the user's 200 and show up on their settings page as theirs. Move the
    site names now in the general rules (`shreddit|reddit` in CARD_NAME, `tweet` in
@@ -378,6 +437,43 @@ mutation pass, before the next starts.
     tree attached after the cover was drawn, a detached `new Audio()` or Web Audio, and a video
     in a frame embedded inside a covered item or behind the whole-page cover, are not reached.
     Not checked yet (older than step 6): whether a page can cancel the add-on's timers by id.
+- **Step 6, Instagram Reels (2026-11-19, the user's first report).**
+  - New input: on instagram.com's Reels pages only (`/reels/`, `/reels/<code>/`,
+    `/reel/<code>/`, `/<name>/reel/<code>/`), the whole text of each reel's block, comments
+    included, and the addresses of its links.
+  - New surface: no new attribute, but on those pages every video that has a reel's block
+    around it is now paused, muted and (when it is read as not about GTA after a check) played
+    by the add-on, not only a selector-named player; its cover sits on a box chosen by the
+    page's shape (no names).
+  - New permission: none.
+  - What a hostile party can do, and what caps it: anyone who can comment under a reel can get
+    it covered by writing about GTA (the user's choice; "Not about GTA" shows it, for that reel
+    only). Instagram's own page decides which box is covered, but a cover only sits on a box,
+    never removes one, and the switch turns it off. Cost, with no cap: each pass climbs from
+    every video, querying every box on the way (the box that holds the whole list included,
+    so it grows faster than the number of reels), and reads every reel's text, comments
+    included; each "emptied" runs a pass of its own. Measured, copying a pass's page work into
+    the live page: 0.84 ms with 4 reels (the matcher's reading of the text not included), and
+    Instagram changed the page once in 5 s of playback. Only Instagram's own page can drive
+    it, and only its own tab slows. Accepted limits (none seen live): what Instagram draws for
+    a reel in the ~46 ms before its video exists (a still picture there would show for that
+    moment); a reel whose caption came after its video would be read on its name first and
+    play until the caption came; a block reused for another reel with its name or counts
+    changing before its caption would be decided on the old caption; when neither a box
+    around the video nor the reel itself can carry a cover (zero size, `display: contents`),
+    there is none and the video is let go; a reel with nothing to read stays "Checking" and is
+    not counted (the switch turns it off); a block with a second video, or links to two posts,
+    cuts the reel down, so it may be read on too little; other videos on a single reel's page
+    would become players; the reel being watched is picked by area, and a bigger box partly
+    shown could outrank it. The fix was tried live logged out only; the logged-in page is known
+    from the user's saved copy.
+- **"Rockstar" alone built in (2026-11-19, the user's report: a GTA Short said only that and
+  played).** No new input, surface or permission: one more built-in word. Anyone can now get a
+  line covered by writing "rockstar" alone, as with every built-in word; "Not about GTA" and
+  the switch show it. Accepted false hits (the user's choice, pinned in the tests): Post
+  Malone's song, the energy drink, "a real rockstar developer". An own "Rockstar" the user had
+  added becomes the built-in one, so its covers now name the word: the word is public, so this
+  tells a page nothing about the user's list.
 - **Step 7, signing (2026-11-19).**
   - New input: the two AMO keys, from `.env` only, read by `tools/sign_rules.mjs` (to sign) and
     the repo check (to search other files for them).

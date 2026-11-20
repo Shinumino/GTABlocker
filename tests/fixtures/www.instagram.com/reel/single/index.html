@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Instagram</title>
+<!-- A stand-in written for the tests, not a copy of Instagram: a single reel's page (a reel
+     opened from a link, /reel/<code>/) shaped like the one Instagram served on 2026-11-19, live
+     and logged out. The class names are scrambled there, so none are copied: only the shape.
+     Names here must not end in a word the general card rule reads (post, comment, item...).
+
+     The page's main area holds the reel: its video's column on the left (the video, and
+     controls whose icon carries words only in its SVG title), and on the right its side: the
+     name and Follow, the caption with a link to the reel itself ("6h"), and the comments,
+     each with a link to itself under the reel's own code (/p/<code>/c/<id>/: 13 of them live).
+     Below it on screen, "More posts" from the same account: pictures linking to other posts
+     (/p/<code>/), one of them about GTA. Live, the reel and More posts share the next box up
+     from the reel's own (links to 10 other posts there).
+
+     Options in the address: ?cat, the reel is not about GTA (its More posts still have the GTA
+     one); ?muted, Instagram mutes its video; ?latemore, More posts come 1500 ms after the page
+     (the reel's block then changes: the box around it gains other posts); ?dialog, the reel is
+     shown in a dialog outside the main area, with nothing else on the page but a line about
+     GTA in the main area (no More posts); ?tall, room below More posts, so the page can be
+     scrolled until the reel is out of view. The video plays a silent sound made here, so
+     "paused" is real; __heard counts the moments it played on with its sound. -->
+<style>
+  body { margin: 0; background: #0c1014; color: #f5f5f5; font: 14px/18px sans-serif; }
+  main { display: block; padding-top: 34px; }
+  .page { display: block; width: 975px; margin: 0 auto; }
+  .pane-outer { display: block; width: 675px; height: 601px; margin: 0 auto; }
+  .pane { display: flex; width: 675px; height: 601px; }
+  .column { display: block; position: relative; width: 337px; height: 599px; }
+  .column > div { display: block; width: 337px; height: 599px; }
+  video { display: block; width: 337px; height: 599px; object-fit: cover; }
+  .controls { display: block; position: absolute; right: 12px; bottom: 12px; width: 28px; height: 28px; }
+  .side { display: block; width: 336px; height: 599px; padding: 0 16px; box-sizing: border-box; }
+  .who { display: flex; align-items: center; gap: 8px; height: 60px; }
+  .who img { width: 32px; height: 32px; }
+  .caption, .remarks, .remark { display: block; margin-top: 8px; }
+  h2 { font-size: 14px; margin: 48px 0 16px; }
+  .grid { display: flex; gap: 4px; }
+  .grid a { display: block; width: 309px; height: 309px; }
+  .grid img { display: block; width: 309px; height: 309px; }
+  .overlay { display: block; position: fixed; inset: 0; padding-top: 60px; background: #0c1014; }
+  svg { width: 24px; height: 24px; }
+</style>
+</head>
+<body>
+<main role="main"><div class="page" id="page">
+  <div class="pane-outer" id="reel"><div class="pane">
+    <div class="column"><div><video id="video" loop playsinline preload="none"></video></div>
+      <div class="controls" role="button" tabindex="0" aria-label="Press to play"><svg viewBox="0 0 24 24"><title>Audio is muted</title><circle cx="12" cy="12" r="10"></circle></svg></div></div>
+    <div class="side">
+      <div class="who"><img alt="tutorial_info's profile picture" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="><a href="/tutorial_info/"><span dir="auto">tutorial_info</span></a> <span>Follow</span></div>
+      <div class="caption"><a href="/tutorial_info/">tutorial_info</a> <span dir="auto" id="caption">E se eu te dissesse que já é possível jogar GTA VI pelo navegador?</span> <a href="/reel/single/"><time>6h</time></a></div>
+      <div class="remarks" id="comments">
+        <div class="remark"><a href="/someone/"><span dir="auto">someone</span></a> <span dir="auto">Where is this?</span> <a href="/p/single/c/17896767150439835/"><time>2h</time></a></div>
+        <div class="remark"><a href="/another/"><span dir="auto">another</span></a> <span dir="auto">Nice one</span> <a href="/p/single/c/17996178144116684/"><time>1h</time></a></div>
+      </div>
+    </div>
+  </div></div>
+</div></main>
+<template id="more">
+  <h2>More posts from <a href="/tutorial_info/">tutorial_info</a></h2>
+  <div class="grid">
+    <a href="/p/morepost1/"><img alt="Qual controle combina com você?" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
+    <a href="/p/morepost2/" id="gta-post"><img alt="GTA 6: every secret on the new map" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
+    <a href="/p/morepost3/"><img alt="Controle com bateria infinita?" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
+  </div>
+</template>
+<script>
+  const rate = 8000, seconds = 3, n = rate * seconds;
+  const wav = new DataView(new ArrayBuffer(44 + n));
+  const text = (at, s) => [...s].forEach((c, i) => wav.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF'); wav.setUint32(4, 36 + n, true); text(8, 'WAVEfmt '); wav.setUint32(16, 16, true);
+  wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, rate, true); wav.setUint32(28, rate, true);
+  wav.setUint16(32, 1, true); wav.setUint16(34, 8, true); text(36, 'data'); wav.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) wav.setUint8(44 + i, 128);
+  const params = new URLSearchParams(location.search);
+  if (params.has('cat')) document.getElementById('caption').textContent = 'A cat meets a cucumber';
+  if (params.has('tall')) document.body.style.paddingBottom = '2000px';
+  const page = document.getElementById('page');
+  const addMore = () => page.appendChild(document.getElementById('more').content.cloneNode(true));
+  if (params.has('dialog')) {
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.appendChild(document.getElementById('reel'));
+    document.body.appendChild(overlay);
+    page.innerHTML = '<p id="behind">GTA 6 is out: every launch trailer in one place</p>';
+  } else if (params.has('latemore')) setTimeout(addMore, 1500);
+  else addMore();
+  const video = document.getElementById('video');
+  const controls = document.querySelector('.controls');
+  video.addEventListener('play', () => controls.setAttribute('aria-label', 'Press to pause'));
+  video.addEventListener('pause', () => controls.setAttribute('aria-label', 'Press to play'));
+  video.muted = params.has('muted');
+  video.src = URL.createObjectURL(new Blob([wav.buffer], { type: 'audio/wav' }));
+  window.__heard = 0;
+  video.addEventListener('timeupdate', () => { if (!video.paused && !video.muted && video.currentTime > 0) window.__heard++; });
+  window.__play = () => video.play().catch(() => {});
+  window.__play();
+</script>
+</body>
+</html>

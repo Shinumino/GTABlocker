@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GTA Blocker",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Covers anything about GTA on the pages you visit with a short note.",
   "browser_specific_settings": {
     "gecko": {

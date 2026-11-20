@@ -50,6 +50,11 @@ export const SHOULD_MATCH = [
   ['Rockstar Games announced the date', 'rockstar games'],
   ['@RockstarGames', 'rockstar games'],
   ['rockstargames.com', 'rockstar games'],
+  // "Rockstar" alone (the user's report, 2026-11-19: a GTA Short said only that).
+  ['Rockstar', 'rockstar'],
+  ['Rockstar just dropped the trailer', 'rockstar'],
+  ['#Rockstar', 'rockstar'],
+  ["Rockstar's next game", 'rockstar'],
   ['Back to Vice City', 'vice city'],
   ['#ViceCity', 'vice city'],
   ['vice-city', 'vice city'],
@@ -74,11 +79,15 @@ export const ACCEPTED_FALSE_HITS = [
   ['Traffic in the GTA today', 'gta*'], // Greater Toronto Area
   ['the San Andreas fault', 'san andreas'],
   ['D\u{ED}a de todos los santos', 'los santos'], // ordinary Spanish
+  // Accepted on 2026-11-19 with "rockstar" alone (the user's choice).
+  ['a real rockstar developer', 'rockstar'],
+  ['Post Malone - rockstar', 'rockstar'],
+  ['Rockstar Energy Drink', 'rockstar'],
 ];
 
 export const SHOULD_NOT_MATCH = [
-  ['a real rockstar developer', null],
-  ['Rockstar', null],
+  ['a rock star on stage', null], // two words: not the one entry
+  ['the rockstars of jazz', null], // a whole word only
   ['grand theft', null],
   ['auto theft is up', null],
   ['Jason', null],

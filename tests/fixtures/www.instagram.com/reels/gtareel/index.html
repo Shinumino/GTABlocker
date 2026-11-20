@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Instagram</title>
+<!-- A stand-in written for the tests, not a copy of Instagram: the Reels page shaped like the
+     one Instagram served on 2026-11-19 (live, logged out, and the user's saved logged-in page).
+     The class names are scrambled there, so none are copied: only the shape. Names here must
+     not end in a word the general card rule reads (post, comment, item...): "post" and
+     "comment" once made it fire where live it does not.
+
+     The page's main area holds a list of reels, each its own block (a row): the reel's stage,
+     its side buttons (like, comment, with counts) and, drawn to the left of the video, its side
+     with the profile picture, the name, Follow, the caption and the comments. Inside the stage,
+     a box with no words holds the video's column (the video, and controls whose icon carries
+     words only in its SVG title, with an aria-label, "Press to play", as on the user's saved
+     page; here it changes to "Press to pause" while the video plays: whether Instagram's does
+     was not measured, and a new reel must not be decided on it) and a faint copy of the reel's
+     picture around it (an <img> at 30% opacity, a little wider than the video). Logged in
+     (?loggedin), that box sits in one more wrapper marked data-virtualized, as in the user's
+     saved page.
+
+     Each reel has its own video and its caption from the start. __scroll() moves on in
+     Instagram's order, with times of its own: it pauses the current video, changes the address
+     to the next reel's (/reels/<code>/) 4 ms later, changes a class on a picture 15 ms after
+     that, and plays the next one 31 ms after the pause (live, 2026-11-19: the address 1 to
+     4 ms after the pause, classes on pictures 13 to 24 ms after the address, the play 31 to
+     47 ms after it). The videos play a silent sound made here, so "paused" is
+     real. __heard[name] counts the moments a reel's video played on with its sound (past its
+     start).
+
+     Options in the address: ?loggedin, the logged-in shape; ?order=a,b,c, the reels in the
+     list (default gta,cat,dog); ?muted, Instagram mutes its videos (its own setting from then
+     on); ?still, the first video does not start on its own; ?videolate, the page builds as it
+     did live (every reel's caption first, its video after: live, 46 ms), here waiting until
+     the add-on has read a caption, so the order is sure (__captionFirst says it was);
+     ?label, a label with words ("Paid partnership") sits on each video, inside its own
+     wrapper; ?nav, a header with words about GTA sits next to the main area, in the same
+     wrapper (as Instagram's menu does); ?home, the page starts at its home address (/), with
+     the reels already there; ?second, each reel's column holds a second, small video next to
+     its own (not seen live: no box around the reel's video then holds it alone with its
+     words); ?glowalt, the faint copy of the reel's picture has a description about GTA;
+     ?contents, no box between a reel's video and its row can carry a cover (all
+     display: contents; not seen live).
+     __playedUncovered[name] is set when a reel's video starts playing ("playing") with no
+     cover over it: for a GTA reel, the moment before the add-on read it (finer than __heard,
+     which Firefox's "timeupdate" only gives every ~250 ms).
+     __scroll() moves on to the next reel and __scrollBack() to the one before; __mount(name)
+     adds a reel at the end, whole (its video with its caption, as Instagram adds one), its
+     video playing at once; __mount(name, ms) adds it with its caption first and its video ms
+     later (as live on load); __remove(i) takes reel i off the page (Instagram's list drops
+     reels far away); __newSource(i, name) puts reel `name`'s video into reel i's own
+     video (a new source) and its caption 800 ms later; __comment(i, text) adds a comment under
+     reel i; __play(i) plays reel i's video, as Instagram does; __swapVideo(i) puts a new video
+     element, playing, in place of reel i's (its wrapper stays); __enter() moves in place to the
+     Reels page's address and __leave() to Explore's, the reels staying on the page. -->
+<style>
+  body { margin: 0; background: #0c1014; color: #f5f5f5; font: 14px/18px sans-serif; }
+  #root { display: block; }
+  nav { display: block; height: 40px; padding: 8px; }
+  main { display: block; padding-top: 16px; }
+  .list { display: block; }
+  .row { display: flex; justify-content: center; width: 1600px; height: 855px; }
+  .center { display: flex; width: 607px; height: 855px; justify-content: flex-end; }
+  .with-actions { display: flex; width: 535px; height: 823px; }
+  .stage { display: block; position: relative; width: 463px; height: 823px; }
+  .virtualized { display: block; position: relative; width: 463px; height: 823px; }
+  .frame { display: block; position: relative; width: 463px; height: 823px; }
+  .column { display: block; position: relative; width: 461px; height: 821px; margin: 1px; }
+  .column > div { display: block; position: relative; width: 461px; height: 821px; }
+  video { display: block; width: 461px; height: 821px; object-fit: cover; }
+  .label { display: block; position: absolute; left: 12px; top: 12px; }
+  .controls { display: block; position: absolute; right: 12px; bottom: 12px; width: 28px; height: 28px; }
+  .glow { display: block; position: absolute; left: -8px; top: 0; width: 479px; height: 823px; opacity: 0.3; z-index: -1; }
+  .glow.shown { opacity: 0.31; }
+  .side { display: block; position: absolute; right: 100%; bottom: 16px; width: 270px; margin-right: 34px; }
+  .who { display: flex; align-items: center; gap: 8px; height: 32px; }
+  .who img { width: 32px; height: 32px; border-radius: 50%; }
+  .caption { display: block; margin-top: 8px; }
+  .remarks { display: block; margin-top: 8px; }
+  .remark { display: block; margin-top: 4px; }
+  .contents .center, .contents .with-actions, .contents .stage, .contents .virtualized,
+  .contents .frame, .contents .column, .contents .column > div { display: contents; }
+  .actions { display: flex; flex-direction: column; justify-content: flex-end; width: 72px; height: 823px; gap: 12px; align-items: center; }
+  svg { width: 24px; height: 24px; }
+</style>
+</head>
+<body>
+<div id="root"><main role="main"><section><div class="list" id="list"></div></section></main></div>
+<script>
+  // A silent sound, three seconds long, made here (no file, no network).
+  const rate = 8000, seconds = 3, n = rate * seconds;
+  const wav = new DataView(new ArrayBuffer(44 + n));
+  const text = (at, s) => [...s].forEach((c, i) => wav.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF'); wav.setUint32(4, 36 + n, true); text(8, 'WAVEfmt '); wav.setUint32(16, 16, true);
+  wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, rate, true); wav.setUint32(28, rate, true);
+  wav.setUint16(32, 1, true); wav.setUint16(34, 8, true); text(36, 'data'); wav.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) wav.setUint8(44 + i, 128);
+  const sound = URL.createObjectURL(new Blob([wav.buffer], { type: 'audio/wav' }));
+  const params = new URLSearchParams(location.search);
+  const LOGGED_IN = params.has('loggedin');
+  const OWN_MUTED = params.has('muted');
+  const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+
+  const REELS = {
+    gta: { code: 'gtareel', user: 'tutorial_info', caption: 'E se eu te dissesse que já é possível jogar GTA VI pelo navegador?' },
+    gta2: { code: 'gta_reel-2', user: 'heitiroficial', caption: 'Que coisa gostosa #gta6' },
+    cat: { code: 'catreel', user: 'catclips', caption: 'A cat meets a cucumber' },
+    dog: { code: 'dogreel', user: 'dogclips', caption: 'A dog learns to skate' },
+    bird: { code: 'birdreel', user: 'birdclips', caption: 'A parrot sings in the rain' },
+    nocap: { code: 'nocapreel', user: 'quietclips', caption: '' },
+    frog: { code: 'frogreel', user: 'pondclips', caption: 'A frog plays the banjo' },
+  };
+  const ICON = (title) => `<svg viewBox="0 0 24 24"><title>${title}</title><circle cx="12" cy="12" r="10"></circle></svg>`;
+
+  if (params.has('nav')) {
+    const nav = document.createElement('nav');
+    nav.innerHTML = '<a href="/explore/tags/gta6/">GTA 6 news</a>';
+    document.getElementById('root').prepend(nav);
+  }
+  if (params.has('contents')) document.body.classList.add('contents');
+  const list = document.getElementById('list');
+  const reels = []; // { name, row, video, caption, comments }
+  window.__heard = {};
+  window.__playedUncovered = {};
+
+  function block(name) {
+    const r = REELS[name];
+    const row = document.createElement('div');
+    row.className = 'row';
+    const label = params.has('label') ? '<span class="label">Paid partnership</span>' : '';
+    const second = params.has('second') ? '<video class="second" muted playsinline preload="none" style="display: block; width: 40px; height: 40px;"></video>' : '';
+    const glowAlt = params.has('glowalt') ? 'GTA 6 gameplay' : '';
+    const box = `<div class="frame"><div class="column"><div><video loop playsinline preload="none"></video>${label}</div>${second}`
+      + `<div class="controls" role="button" tabindex="0" aria-label="Press to play">${ICON('Audio is muted')}</div></div>`
+      + `<img class="glow" alt="${glowAlt}" src="${PIXEL}"></div>`;
+    row.innerHTML = `<div class="center"><div class="with-actions"><div class="stage">`
+      + (LOGGED_IN ? `<div class="virtualized" data-virtualized="false">${box}</div>` : box)
+      + `<div class="side"><div class="who"><img alt="${r.user}'s profile picture" src="${PIXEL}">`
+      + `<a href="/${r.user}/reels/"><span dir="auto">${r.user}</span></a> <span>Follow</span></div>`
+      + `<div class="caption"></div><div class="remarks"></div></div>`
+      + `</div><div class="actions"><span>${ICON('Like')}</span><span>2,372</span><span>${ICON('Comment')}</span><span>56</span></div>`
+      + `</div></div>`;
+    const reel = { name, row, video: row.querySelector('video'), caption: row.querySelector('.caption'), comments: row.querySelector('.remarks') };
+    if (r.caption) reel.caption.innerHTML = `<span dir="auto">${r.caption}</span>`;
+    wire(reel, reel.video);
+    return reel;
+  }
+  // A reel's video: its sound, its controls' label, and the count of moments it was heard.
+  function wire(reel, video) {
+    video.muted = OWN_MUTED;
+    video.src = sound;
+    const controls = reel.row.querySelector('.controls');
+    video.addEventListener('play', () => controls.setAttribute('aria-label', 'Press to pause'));
+    video.addEventListener('pause', () => controls.setAttribute('aria-label', 'Press to play'));
+    video.addEventListener('playing', () => {
+      if (!video.closest('[data-gta-cover]')) window.__playedUncovered[reel.name] = true;
+    });
+    video.addEventListener('timeupdate', function () {
+      if (!this.paused && !this.muted && this.currentTime > 0) window.__heard[reel.name] = (window.__heard[reel.name] || 0) + 1;
+    });
+  }
+
+  const late = [];
+  for (const name of (params.get('order') || 'gta,cat,dog').split(',')) {
+    const reel = block(name);
+    reels.push(reel);
+    if (params.has('videolate')) {
+      late.push([reel.video.parentElement, reel.video]);
+      reel.video.remove();
+    }
+    list.appendChild(reel.row);
+  }
+  let current = 0;
+  window.__play = (i) => reels[i].video.play().catch(() => {});
+  const codeOf = (i) => REELS[reels[i].name].code;
+  // Instagram's order, live: pause, the address, a class on a picture, the next video's play.
+  function moveTo(next) {
+    if (next < 0 || next >= reels.length) return;
+    reels[current].video.pause();
+    current = next;
+    reels[current].row.scrollIntoView();
+    setTimeout(() => {
+      history.pushState({}, '', `/reels/${codeOf(current)}/${location.search}`);
+      setTimeout(() => reels[current].row.querySelector('.glow').classList.toggle('shown'), 15);
+    }, 4);
+    setTimeout(() => {
+      reels[current].video.muted = OWN_MUTED;
+      window.__play(current);
+    }, 31);
+  }
+  window.__scroll = () => moveTo(current + 1);
+  window.__scrollBack = () => moveTo(current - 1);
+  window.__mount = (name, videoMs = 0) => {
+    const reel = block(name);
+    reels.push(reel);
+    const at = reels.length - 1;
+    if (videoMs > 0) {
+      const holder = reel.video.parentElement;
+      reel.video.remove();
+      list.appendChild(reel.row);
+      setTimeout(() => { holder.prepend(reel.video); window.__play(at); }, videoMs);
+    } else {
+      list.appendChild(reel.row);
+      window.__play(at);
+    }
+    return at;
+  };
+  window.__remove = (i) => reels[i].row.remove();
+  window.__newSource = (i, name) => {
+    const reel = reels[i];
+    reel.name = name;
+    reel.video.src = sound;
+    reel.video.muted = OWN_MUTED;
+    window.__play(i);
+    setTimeout(() => { reel.caption.innerHTML = `<span dir="auto">${REELS[name].caption}</span>`; }, 800);
+  };
+  window.__swapVideo = (i) => {
+    const reel = reels[i];
+    const fresh = document.createElement('video');
+    fresh.loop = true;
+    fresh.playsInline = true;
+    wire(reel, fresh);
+    reel.video.replaceWith(fresh);
+    window.__oldVideo = reel.video;
+    reel.video = fresh;
+    window.__play(i);
+  };
+  window.__comment = (i, words) => {
+    const c = document.createElement('div');
+    c.className = 'remark';
+    c.innerHTML = `<a href="/someone/"><span dir="auto">someone</span></a> <span dir="auto">${words}</span>`;
+    reels[i].comments.appendChild(c);
+  };
+  // In place, as Instagram moves between its pages: the address, then a change on the page.
+  const nudge = () => setTimeout(() => reels[current].row.querySelector('.glow').classList.toggle('shown'), 15);
+  window.__enter = () => { history.pushState({}, '', `/reels/${codeOf(current)}/${location.search}`); nudge(); };
+  window.__leave = () => { history.pushState({}, '', `/explore/${location.search}`); nudge(); };
+
+  history.replaceState({}, '', params.has('home') ? `/${location.search}` : `/reels/${codeOf(0)}/${location.search}`);
+  const start = () => { if (!params.has('still')) window.__play(0); };
+  if (late.length > 0) {
+    // The add-on reads the page once its own setup is done (up to a second): the videos come
+    // only after it has covered a caption, so the caption is sure to be read first.
+    const began = Date.now();
+    const wait = setInterval(() => {
+      const read = !!document.querySelector('.caption [data-gta-cover], .caption[data-gta-cover]');
+      if (!read && Date.now() - began < 3000) return;
+      clearInterval(wait);
+      window.__captionFirst = read;
+      for (const [holder, video] of late) holder.prepend(video);
+      start();
+    }, 10);
+  } else start();
+</script>
+</body>
+</html>

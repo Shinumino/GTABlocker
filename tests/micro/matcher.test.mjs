@@ -16,9 +16,12 @@ const { matcher } = loadExtensionScripts({ until: 'lib/matcher.js' }).GtaBlocker
 const defaults = matcher.compile(matcher.DEFAULT_ENTRIES);
 const codes = (m) => plain(m.rejected.map((r) => r.code));
 
-test('the default list is the one agreed on 2026-11-18, and every entry of it is used', () => {
+test('the default list is the one agreed on 2026-11-18 (with "rockstar" alone, 2026-11-19), and every entry of it is used', () => {
+  // "rockstar" alone: a GTA Short said only "Rockstar" and played (the user's report and
+  // choice, 2026-11-19). "rockstar games" stays before it: it alone finds "rockstargames", and
+  // where both match, the earlier entry in the list is the one named.
   assert.deepEqual(plain(matcher.DEFAULT_ENTRIES), [
-    'gta*', 'grand theft auto', 'rockstar games', 'vice city', 'leonida', 'los santos',
+    'gta*', 'grand theft auto', 'rockstar games', 'rockstar', 'vice city', 'leonida', 'los santos',
     'liberty city', 'san andreas',
     'jason and lucia', 'jason e lucia', 'jason y lucia',
     'lucia and jason', 'lucia e jason', 'lucia y jason',

@@ -60,10 +60,10 @@ async function fresh() {
   const { firefox } = session;
   await inSettings(async () => {
     // Reset whenever the list is not exactly the built-in one (a count alone is not enough: one
-    // word added and one removed is 14 too).
+    // word added and one removed is 15 too).
     await click('#reset');
     if (await firefox.evaluate("return document.getElementById('ask').open")) await click('#ask-yes');
-    await firefox.waitForPage('the built-in list', "return document.getElementById('n-words').textContent === '(14 of 200)' && !document.querySelector('.wlist .tag.yours')");
+    await firefox.waitForPage('the built-in list', "return document.getElementById('n-words').textContent === '(15 of 200)' && !document.querySelector('.wlist .tag.yours')");
     if (await firefox.evaluate("return Boolean(document.getElementById('clear'))")) {
       await click('#clear');
       await click('#ask-yes');
@@ -96,7 +96,7 @@ test('a refused word says why and keeps what was typed; an added one is first, a
     await addWord('cucumber');
     assert.equal((await words())[0], 'cucumber');
     assert.equal(await text('.wlist li:first-child .tag'), 'yours');
-    assert.equal(await text('#n-words'), '(15 of 200)');
+    assert.equal(await text('#n-words'), '(16 of 200)');
   });
   await waitCovered(['v-cat', 'v-gta', 'v-online', 'v-vice']);
   assert.equal(await firefox.evaluate("return document.getElementById('v-cat').getAttribute('data-gta-word')"), 'a word from your list');
@@ -149,10 +149,10 @@ test('Reset asks first and names what goes; Escape keeps the list, "Reset the li
   // Read again from what is stored: Escape changed nothing.
   await inSettings(async () => {
     assert.ok((await words()).includes('cucumber'));
-    assert.equal(await text('#n-words'), '(14 of 200)');
+    assert.equal(await text('#n-words'), '(15 of 200)');
     await click('#reset');
     await click('#ask-yes');
-    await waitText('#n-words', '(14 of 200)');
+    await waitText('#n-words', '(15 of 200)');
     await waitText('#word-msg', 'Back to the built-in words.');
     assert.ok(!(await words()).includes('cucumber'));
   });

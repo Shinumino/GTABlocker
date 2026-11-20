@@ -165,6 +165,29 @@ test('a built-in word added in a later version reaches an edited list, unless it
   assert.equal(fewer.isOwn(t, 'leonida'), false);
 });
 
+test('an own word that a later version builds in becomes the built-in one: listed once, and its covers name it', () => {
+  // The user had added "Rockstar" by hand when 0.1.1 built it in (2026-11-19). Kept as their
+  // own, the list showed it twice and its covers said "a word from your list"; typed in, a
+  // built-in word was already the built-in one (addWord).
+  const defaults = [...BUILT_IN, 'trevor philips'];
+  const L = S.withDefaults(defaults);
+  const s = L.read({ words: { added: ['franklin', 'Trevor  Philips'], removed: [] } });
+  assert.deepEqual([...s.added], ['franklin']);
+  assert.deepEqual([...L.entries(s)], ['franklin', ...defaults]);
+  assert.equal(L.isOwn(s, 'trevor philips'), false);
+  assert.equal(L.coverWord(s, 'trevor philips'), 'trevor philips');
+  // Even where the stored words say it was removed (no menu can do that): the person's own
+  // word stays in the list, now as the built-in one.
+  const t = L.read({ words: { added: ['Trevor Philips'], removed: ['trevor philips', 'leonida'] } });
+  assert.deepEqual([...t.added], []);
+  assert.deepEqual([...t.removed], ['leonida']);
+  // The user's own case, in this version.
+  const u = S.read({ words: { added: ['Rockstar'], removed: [] } });
+  assert.deepEqual([...u.added], []);
+  assert.equal(list(u).filter((w) => /rockstar$/i.test(w)).length, 1, 'listed twice');
+  assert.equal(S.coverWord(u, 'rockstar'), 'rockstar');
+});
+
 test('Undo of a removal puts back only that word, where it was', () => {
   let s = add(add(add(fresh(), 'aaa one'), 'bbb two'), 'ccc three'); // ccc, bbb, aaa
   const at = s.added.indexOf('bbb two');

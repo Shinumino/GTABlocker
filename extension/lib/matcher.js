@@ -33,8 +33,12 @@
   // Agreed with the user on 2026-11-18: all of GTA, not only GTA 6, for as long as this is
   // installed. Known false hits, accepted: GTA as the Greater Toronto Area, the San Andreas
   // fault, and "los santos" in ordinary Spanish. "Jason & Lucia" is covered by the "and" forms.
+  // "rockstar" alone since 2026-11-19 (a GTA Short said only "Rockstar" and played; the user's
+  // choice, knowing it also covers Post Malone's song, the energy drink and "a real rockstar").
+  // "rockstar games" stays before it: it alone finds "rockstargames", and where both match, the
+  // earlier entry is the one a cover names.
   const DEFAULT_ENTRIES = Object.freeze([
-    'gta*', 'grand theft auto', 'rockstar games', 'vice city', 'leonida', 'los santos',
+    'gta*', 'grand theft auto', 'rockstar games', 'rockstar', 'vice city', 'leonida', 'los santos',
     'liberty city', 'san andreas',
     'jason and lucia', 'jason e lucia', 'jason y lucia',
     'lucia and jason', 'lucia e jason', 'lucia y jason',

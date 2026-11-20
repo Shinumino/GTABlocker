@@ -117,6 +117,19 @@ test('a GTA Short after a GTA Short stays covered all along, and its cover takes
   assert.equal((await now()).heard, 0);
 });
 
+test('on YouTube a new address alone starts a check: covered from the address, before the caption comes', async () => {
+  // YouTube reuses one Short element for the next Short, so its address counts as a new Short
+  // (sites.js key 'address'), even with no new video source. Instagram's reels each have their
+  // own block, and there it does not (key 'item'): this pins the two apart (test review,
+  // 2026-11-19: every other journey also swaps the source, which starts a check on its own).
+  await open('/shorts/gta.html?cat');
+  await playing();
+  await js('window.__scroll("gta", true)');
+  const s = await waitNow('checked from the address', '(s) => s.player && s.checking', { timeoutMs: 600 });
+  assert.equal(s.path, '/shorts/gta-1', 'checked before the address changed: the journey proves nothing');
+  await coveredGta();
+});
+
 test('a Short whose caption is the very same as the last one\u{2019}s is decided after 4 s', async () => {
   await open();
   await coveredGta();
