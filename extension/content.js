@@ -55,7 +55,9 @@
       mark('ready');
       return;
     }
-    const matcher = GtaBlocker.matcher.compile(list);
+    // Every word in the list counts: each met the cap of 200 when it was added, and a built-in
+    // word a later version adds must not be dropped for it (correctness review, 0.1.2).
+    const matcher = GtaBlocker.matcher.compile(list, { limit: list.length });
     if (list.length > 0 && matcher.entries.length === 0) {
       // A list that is there but that the matcher refuses whole: never silently cover nothing.
       mark('error');

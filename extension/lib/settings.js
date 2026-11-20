@@ -98,15 +98,18 @@
       const sw = obj(r.switch);
       const w = obj(r.words);
       const added = unique(arr(w.added).filter((x) => !isBlank(x))).slice(0, MAX_WORDS);
-      // An own word that this version has built in becomes the built-in one, as typing it in
-      // does (addWord): kept as the person's own, the list showed it twice and its covers said
-      // "a word from your list" (the user's "Rockstar", built in on 2026-11-19).
-      const builtIn = builtInsRepeated(added);
+      // Each own word the matcher reads as a word already in the list is listed once. One this
+      // version has built in becomes the built-in one, as typing it in does (addWord): kept as
+      // the person's own, the list showed it twice and its covers said "a word from your list"
+      // (the user's "Rockstar", "jason" and "Lucia", built in on 2026-11-19). One that repeats
+      // an earlier own word goes (correctness review, 0.1.2). The background saves the result
+      // after an update (foldedWords).
+      const { builtIn, again } = repeatsIn(added);
       const repeated = new Set(builtIn.values());
       return {
         everywhere: typeof sw.everywhere === 'boolean' ? sw.everywhere : true,
         offSites: unique(arr(sw.offSites).map(cleanSite).filter(Boolean)).slice(0, MAX_SITES),
-        added: added.filter((x) => !builtIn.has(x)),
+        added: added.filter((x) => !builtIn.has(x) && !again.has(x)),
         // Only a word still built in can be removed: one dropped from the built-in list is
         // simply forgotten. One the person also has as their own stays in the list.
         removed: unique(arr(w.removed).filter((x) => defaults.includes(x) && !repeated.has(x))),
@@ -157,21 +160,37 @@
       return isOwn(s, entry) ? OWN_LABEL : entry;
     }
 
-    // Of the person's own words, the ones that repeat a built-in entry: own word -> that entry.
-    // One reading of the whole list, by the matcher, as builtInFor does for one word.
-    function builtInsRepeated(own) {
-      const found = new Map();
-      for (const r of M.compile([...defaults, ...own]).rejected) {
-        if (r.code === 'duplicate' && r.sameAs < defaults.length) found.set(own[r.index - defaults.length], defaults[r.sameAs]);
+    // Of the person's own words, the ones the matcher reads as a word already in the list:
+    // builtIn maps each that repeats a built-in entry to that entry, again holds each that
+    // repeats an earlier own word. One reading of the whole list, so this can never disagree
+    // with what the page covers. Only an own word is ever a repeat: a built-in list that
+    // repeated a word of its own made its first copy impossible to remove (design review,
+    // 0.1.2).
+    function repeatsIn(own) {
+      const builtIn = new Map();
+      const again = new Set();
+      for (const r of M.compile([...defaults, ...own], { limit: Infinity }).rejected) {
+        if (r.code !== 'duplicate' || r.index < defaults.length) continue;
+        const word = own[r.index - defaults.length];
+        if (r.sameAs < defaults.length) builtIn.set(word, defaults[r.sameAs]);
+        else again.add(word);
       }
-      return found;
+      return { builtIn, again };
     }
 
-    // The built-in entry the text repeats ("Vice  City" is "vice city"), or null. The matcher
-    // decides what counts as the same entry, so this can never disagree with what it covers.
+    // The built-in entry the text repeats ("Vice  City" is "vice city"), or null.
     function builtInFor(text) {
-      const r = M.compile([...defaults, text]).rejected.find((x) => x.index === defaults.length);
-      return r && r.code === 'duplicate' ? defaults[r.sameAs] : null;
+      return repeatsIn([text]).builtIn.get(text) ?? null;
+    }
+
+    // The stored words as read() reads them, or null when that changes nothing or nothing is
+    // stored. After an update the background saves them once: saved only on the person's next
+    // edit, what a later version did with a word it had built in depended on whether they had
+    // edited the list in between (design, correctness and security review, 0.1.2).
+    function foldedWords(raw) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+      const words = toStorage(read({ words: raw })).words;
+      return JSON.stringify(words) === JSON.stringify({ added: raw.added, removed: raw.removed }) ? null : words;
     }
 
     const repeats = (entry) => ({ code: 'duplicate', reason: `Already in the list as "${entry}".` });
@@ -207,6 +226,11 @@
         return s.removed.includes(entry) ? { ...s, removed: s.removed.filter((w) => w !== entry) } : s;
       }
       if (s.added.includes(entry)) return s;
+      // Back in another spelling meanwhile ("jason statham" for "Jason Statham"): it is in the
+      // list already, so nothing comes back (it was listed twice: correctness review, 0.1.2).
+      const list = entries(s);
+      const r = M.compile([...list, entry], { limit: Infinity }).rejected.find((x) => x.index === list.length);
+      if (r && r.code === 'duplicate') return s;
       const added = [...s.added];
       added.splice(Math.max(0, Math.min(Number.isInteger(index) ? index : 0, added.length)), 0, entry);
       return { ...s, added };
@@ -247,7 +271,7 @@
 
     return Object.freeze({
       KEYS, OWN_LABEL, MAX_REPORTS, MAX_WORDS, siteKey, read, toStorage, coverState, setSite, setEverywhere,
-      entries, isOwn, coverWord, addWord, removeWord, restoreWord, resetWords,
+      entries, isOwn, coverWord, addWord, removeWord, restoreWord, resetWords, foldedWords,
       addReport, removeReport, restoreReport, clearReports, withDefaults: make,
     });
   }

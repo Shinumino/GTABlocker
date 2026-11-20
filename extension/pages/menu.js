@@ -8,6 +8,7 @@
   const box = document.getElementById('menu');
 
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const version = browser.runtime.getManifest().version;
   let settings = S.read(await browser.storage.local.get([...S.KEYS]));
   let seen = []; // every word this menu has shown, in the order first seen (menuView.keep)
   let covers = [];
@@ -46,7 +47,7 @@
   const keyOf = (node) => (node && node.dataset && node.dataset.act ? `${node.dataset.act}|${node.dataset.entry || ''}` : null);
 
   function render(focus = keyOf(document.activeElement)) {
-    const v = V.view({ settings, url: tab.url, covers, done });
+    const v = V.view({ settings, url: tab.url, covers, done, version });
     const parts = [];
     for (const row of v.rows) {
       const button = el('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': String(row.on), 'aria-label': row.label, 'data-act': row.kind },
@@ -88,7 +89,8 @@
     parts.push(el('p', { class: 'msg good', role: 'status' }, message));
     parts.push(el('div', { class: 'pfoot' },
       v.miss && !missOpen ? el('button', { type: 'button', class: 'btn', 'data-act': 'miss' }, 'Report missed GTA') : null,
-      el('button', { type: 'button', class: 'btn', 'data-act': 'settings' }, 'Settings')));
+      el('button', { type: 'button', class: 'btn', 'data-act': 'settings' }, 'Settings'),
+      v.version ? el('span', { class: 'ver', title: `GTA Blocker ${v.version}` }, v.version) : null));
     box.replaceChildren(...parts);
     if (focus) {
       const again = [...box.querySelectorAll('[data-act]')].find((n) => keyOf(n) === focus);

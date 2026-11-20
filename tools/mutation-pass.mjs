@@ -4,7 +4,8 @@
 // seen red. M = step 1 (the harness), S = step 2 (matching), P = step 3 (covering), Q = step 4
 // (toolbar and settings), R = the fixes after trying it, Y and Z = step 6 (YouTube Shorts and the
 // media rule), K = the Kick fix, G = step 7 (signing), I = Instagram Reels (the user's first
-// report), W = "Rockstar" alone built in (the user's report of a Short). Results:
+// report), W = the user's later reports ("Rockstar", "jason" and "lucia" alone, the version in
+// the menu). Results:
 // docs/mutation-pass-step<n>.md and docs/mutation-pass-instagram.md (I and W).
 //
 //   node tools/mutation-pass.mjs              baseline, then every break (about 10 minutes)
@@ -42,7 +43,7 @@ const T = {
   sites: 'tests/micro/sites-rules.test.mjs', yt: 'tests/macro/youtube-shorts.test.mjs',
   media: 'tests/micro/media-rules.test.mjs', mcov: 'tests/macro/media-covers.test.mjs',
   sign: 'tests/micro/sign-rules.test.mjs', signrun: 'tests/micro/sign-run.test.mjs',
-  ig: 'tests/macro/instagram-reels.test.mjs',
+  ig: 'tests/macro/instagram-reels.test.mjs', bg: 'tests/micro/background.test.mjs',
 };
 
 // The line in content.js that marks the page once the first look is done.
@@ -194,7 +195,7 @@ const M = [
   ['S07', 'camel case is split (#ViceCity, PlayGTA)', 'drop the split', MATCHER,
     [["    if (camel) s = s.replace(CAMEL, '$1 $2');", '']], [T.matcher]],
   ['S08', 'case never matters (gTA 6, YouTube)', 'read only the split text', MATCHER,
-    [['        const whole = prepare(text, false);\n        return whole === split ? null : first(whole);', '        return null;']], [T.matcher]],
+    [['        const b = whole === split ? null : first(whole);', '        const b = null;']], [T.matcher]],
   ['S09', '"&" means "and"', 'leave & as punctuation', MATCHER,
     [["\n      .replace(/&/g, ' and ');", '\n      ;']], [T.matcher]],
   ['S10', 'trademark signs are gaps, not letters', 'let NFKC turn them into TM', MATCHER,
@@ -232,7 +233,7 @@ const M = [
   ['S24', '3 letters or digits, punctuation not counted', 'count characters', MATCHER,
     [['(joined.match(LETTERS) || []).length < LIMITS.minChars', 'joined.length < LIMITS.minChars']], [T.matcher]],
   ['S25', 'repeats and refused entries take no place', 'count them against the cap', MATCHER,
-    [["      if (!code && accepted.length >= LIMITS.maxEntries) code = 'list-full';", "      if (!code && accepted.length + rejected.length >= LIMITS.maxEntries) code = 'list-full';"]], [T.matcher]],
+    [["      if (!code && accepted.length >= limit) code = 'list-full';", "      if (!code && accepted.length + rejected.length >= limit) code = 'list-full';"]], [T.matcher]],
   ['S26', 'a repeat is reported, with what it repeats', 'drop it silently', MATCHER,
     [["      if (!code && seen.has(parsed.key)) code = 'duplicate';", '      if (!code && seen.has(parsed.key)) return;']], [T.matcher]],
   ['S27', 'a match names the entry as written', 'name the normalized key', MATCHER,
@@ -365,7 +366,7 @@ const M = [
   ['Q07', 'a full list refuses a built-in word typed back in', 'no check', 'extension/lib/settings.js',
     [["        if (list.length >= MAX_WORDS) return { settings: s, refused: { code: 'list-full', reason: M.REASONS['list-full'] } };\n", '']], [T.settings]],
   ['Q08', 'a built-in word typed back in is built-in again', 'never recognise it', 'extension/lib/settings.js',
-    [["      return r && r.code === 'duplicate' ? defaults[r.sameAs] : null;", '      return null;']], [T.settings]],
+    [['      return repeatsIn([text]).builtIn.get(text) ?? null;', '      return null;']], [T.settings]],
   ['Q09', 'Undo puts back a word where it was', 'always first', 'extension/lib/settings.js',
     [['      added.splice(Math.max(0, Math.min(Number.isInteger(index) ? index : 0, added.length)), 0, entry);', '      added.splice(0, 0, entry);']], [T.settings]],
   ['Q10', 'Undo of a report never makes a copy', 'put it back even if there', 'extension/lib/settings.js',
@@ -723,9 +724,46 @@ const M = [
   ['W02', '"rockstar games" comes before "rockstar"', 'put "rockstar" first', MATCHER,
     [["'rockstar games', 'rockstar', 'vice city'", "'rockstar', 'rockstar games', 'vice city'"]], [T.matcher]],
   ['W03', 'an own word this version has built in becomes the built-in one', 'keep it as their own', 'extension/lib/settings.js',
-    [['        added: added.filter((x) => !builtIn.has(x)),', '        added,']], [T.settings]],
+    [['        added: added.filter((x) => !builtIn.has(x) && !again.has(x)),', '        added: added.filter((x) => !again.has(x)),']], [T.settings, T.spage]],
   ['W04', 'such a word stays in the list even where it is stored as removed', 'keep it removed', 'extension/lib/settings.js',
     [['defaults.includes(x) && !repeated.has(x))),', 'defaults.includes(x))),']], [T.settings]],
+  // "jason" and "lucia" alone, and the version in the menu (0.1.2, the user's report and request).
+  ['W05', '"jason" and "lucia" alone are built-in words', 'drop them', MATCHER,
+    [["    'jason', 'lucia',\n", '']], [T.matcher, T.settings]],
+  ['W06', 'the pairs come before the single names', 'put the names first', MATCHER,
+    [["    'jason and lucia', 'jason e lucia', 'jason y lucia',", "    'jason', 'lucia', 'jason and lucia', 'jason e lucia', 'jason y lucia',"],
+      ["    'jason', 'lucia',\n", '']], [T.matcher]],
+  ['W07', "the menu shows the add-on's version", 'show nothing', 'extension/pages/menu-view.js',
+    [["    out.version = typeof version === 'string' && version.trim() ? version.trim() : null;", '    out.version = null;']], [T.mview, T.edges]],
+  ['W08', "the version sits at the right end of the buttons' row", 'right after the buttons', 'extension/pages/pages.css',
+    [['.pfoot .ver { margin-left: auto; ', '.pfoot .ver { ']], [T.edges]],
+  ['W09', 'the version is smaller than the buttons', "the buttons' size", 'extension/pages/pages.css',
+    [['align-self: center; font-size: 11px; color: var(--muted);', 'align-self: center; font-size: 13px; color: var(--muted);']], [T.edges]],
+  ['W10', 'the version is grey', 'the text colour', 'extension/pages/pages.css',
+    [['align-self: center; font-size: 11px; color: var(--muted);', 'align-self: center; font-size: 11px;']], [T.edges]],
+  // The fixes after the 0.1.2 reviews.
+  ['W11', 'read both ways, the match that starts earlier wins', 'the camel-case reading first', MATCHER,
+    [['        const won = !b || (a && (a.at < b.at || (a.at === b.at && a.index <= b.index))) ? a : b;', '        const won = a || b;']], [T.matcher]],
+  ['W12', 'at the same start in both readings, the earlier entry wins', 'the later one', MATCHER,
+    [['(a.at === b.at && a.index <= b.index)', '(a.at === b.at && a.index > b.index)']], [T.matcher]],
+  ['W13', 'the page uses every word in the stored list', 'only the first 200', 'extension/content.js',
+    [['    const matcher = GtaBlocker.matcher.compile(list, { limit: list.length });', '    const matcher = GtaBlocker.matcher.compile(list);']], [T.content]],
+  ['W14', 'after an update the background saves the words as read', 'never', 'extension/background.js',
+    [['    if (folded) await browser.storage.local.set({ words: folded });\n', '']], [T.bg, T.spage]],
+  ['W15', 'the stored words are read only after an update, never at a first install', 'on any install', 'extension/background.js',
+    [["    if (reason !== 'update') return;\n", '']], [T.bg, T.loads]],
+  ['W16', 'nothing to fold is not written', 'write it anyway', 'extension/lib/settings.js',
+    [['      return JSON.stringify(words) === JSON.stringify({ added: raw.added, removed: raw.removed }) ? null : words;', '      return words;']], [T.bg]],
+  ['W17', 'an own word that repeats an earlier own word goes', 'keep it', 'extension/lib/settings.js',
+    [['        else again.add(word);\n', '']], [T.settings]],
+  ['W18', 'only an own word is ever a repeat', 'a built-in one too', 'extension/lib/settings.js',
+    [["        if (r.code !== 'duplicate' || r.index < defaults.length) continue;", "        if (r.code !== 'duplicate') continue;"]], [T.settings]],
+  ['W19', 'Undo brings nothing back when the word is back in another spelling', 'bring it back', 'extension/lib/settings.js',
+    [["      if (r && r.code === 'duplicate') return s;\n", '']], [T.settings]],
+  ['W20', 'the Reset question puts each word in quotes', 'no quotes', 'extension/pages/settings-view.js',
+    [['    const quoted = items.map((w) => `"${w}"`);', '    const quoted = items;']], [T.sview, T.spage]],
+  ['W21', "the manifest's version is the changelog's newest", 'leave it behind', 'extension/manifest.json',
+    [['"version": "0.1.2",', '"version": "0.1.1",']], [T.ext]],
 ];
 
 // A throwaway copy for one break: never node_modules or .git, and never a file that holds the

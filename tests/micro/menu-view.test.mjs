@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { loadExtensionScripts, plain } from '../support/extension-script.mjs';
 
 const { GtaBlocker } = loadExtensionScripts({ files: ['lib/matcher.js', 'lib/settings.js', 'pages/menu-view.js'], globals: { URL } });
-const { settings: S, menuView: V } = GtaBlocker;
+const { settings: S, menuView: V, matcher: M } = GtaBlocker;
 const URL_YT = 'https://www.youtube.com/results?q=x';
 const COVERS = [{ entry: 'gta*', n: 3 }, { entry: 'trevor philips', n: 1 }, { entry: 'vice city', n: 1 }];
 const mine = S.addWord(S.read({}), 'trevor philips').settings;
@@ -23,6 +23,21 @@ test('on: both switches on, the covers by word, a count, and the report button',
     ['gta*', 3, false, 'notgta', null], ['trevor philips', 1, true, 'remove', null], ['vice city', 1, false, 'notgta', null]]);
   assert.equal(v.hint, true);
   assert.equal(v.miss, true);
+});
+
+test("the add-on's version, trimmed, or nothing when it is not text (the user's request, 2026-11-19)", () => {
+  assert.equal(view({ version: '0.1.2' }).version, '0.1.2');
+  assert.equal(view({ version: ' 0.1.2 ' }).version, '0.1.2');
+  for (const odd of [undefined, null, '', '  ', 2, {}]) assert.equal(view({ version: odd }).version, null, JSON.stringify(odd));
+});
+
+test("the add-on's version is in every state of the menu", () => {
+  const states = {
+    covers: {}, 'nothing covered': { covers: [] }, 'off on this site': { settings: S.setSite(mine, 'youtube.com', false) },
+    'off everywhere': { settings: S.setEverywhere(mine, false) }, "a Firefox page": { url: 'about:addons' },
+    'an empty list': { settings: S.read({ words: { added: [], removed: [...M.DEFAULT_ENTRIES] } }) },
+  };
+  for (const [name, over] of Object.entries(states)) assert.equal(view({ version: '0.1.2', ...over }).version, '0.1.2', name);
 });
 
 test('a word the person acted on stays in its row, marked, and no longer counts', () => {

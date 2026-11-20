@@ -116,6 +116,16 @@ test('with nothing stored, the page side starts with the built-in list, and the 
   assert.equal(document.attributes.get('data-gta-blocker'), 'ready');
 });
 
+test('a full list of own words still uses every built-in word, a later version\u{2019}s new ones included', async () => {
+  // The cap of 200 is on what the person adds. The matcher had a cap of its own, so a list full
+  // under 0.1.0 (186 own words and 14 built-in) lost "jason" and "lucia" without a word
+  // (correctness and security review, 0.1.2).
+  const added = Array.from({ length: 186 }, (_, i) => `own word ${i}`);
+  const { runs } = await boot({ stored: { words: { added, removed: [] } } });
+  assert.equal(runs[0].options.matcher.entries.length, 186 + DEFAULTS.length);
+  assert.equal(runs[0].options.matcher.find('Jason'), 'jason');
+});
+
 test('the page is not marked ready before the page side has finished its first look', async () => {
   const { document, runs } = await boot({ ready: false });
   assert.equal(document.attributes.get('data-gta-blocker'), undefined);

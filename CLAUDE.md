@@ -92,7 +92,7 @@ mutation pass, before the next starts.
    every format or default-ignorable character do not matter; the words of an entry may be
    written together or with any spaces, punctuation or symbols between ("vicecity",
    "Vice-City", "#ViceCity"); `&` means "and" (user's choice: a list like "Jason, Lucia and
-   Pedro" is not the pair); whole words only, where only a letter of the same script continues
+   Pedro" is not the pair, though since 0.1.2 either name alone counts); whole words only, where only a letter of the same script continues
    a word (so `我在玩GTA5` matches) and a digit ends it; a trailing `*` means "a word starting
    with". Punctuation in an entry only separates words; nothing in an entry can act as a
    pattern. Caps: 200 entries, 80 characters after normalizing, 10 words, 3 letters or digits.
@@ -333,6 +333,14 @@ mutation pass, before the next starts.
    passes through the chat). Tests: `sign-rules` (fakes) and `sign-run` (the real seams, a
    throwaway git project, a fake web-ext); breaks G01-G24. Keys, rotation, a run that stops
    halfway: `docs/secrets.md`. Each new version: a higher "version", committed, then sign.
+   The newest heading in CHANGELOG.md must be the manifest's version (extension-rules test):
+   the menu shows that version. PUBLIC since 2026-11-19 (the user's choice): github.com/
+   Shinumino/GTABlocker, MIT, a release per signed version with its .xpi; every push and
+   release is asked first.
+   Reports after signing, each through the same steps (reviews, mutation, docs, signed update):
+   0.1.1 Instagram Reels and "rockstar" alone (`docs/review-instagram.md`); 0.1.2 "jason" and
+   "lucia" alone, the version in the menu, and the fixes its review found
+   (`docs/review-0.1.2.md`); both mutation passes in `docs/mutation-pass-instagram.md`.
 
 ## Security pass (step 1, 2026-11-18)
 
@@ -468,12 +476,27 @@ mutation pass, before the next starts.
     shown could outrank it. The fix was tried live logged out only; the logged-in page is known
     from the user's saved copy.
 - **"Rockstar" alone built in (2026-11-19, the user's report: a GTA Short said only that and
-  played).** No new input, surface or permission: one more built-in word. Anyone can now get a
-  line covered by writing "rockstar" alone, as with every built-in word; "Not about GTA" and
-  the switch show it. Accepted false hits (the user's choice, pinned in the tests): Post
+  played).** No new input, surface or permission: one more built-in word. Anyone can now get
+  something covered by writing "rockstar" alone, as with every built-in word, and that reaches
+  further than a line: a page title with it brings the whole-page card, an account name or a
+  comment under a reel covers, pauses and mutes the reel, and the word is found inside
+  "@rockstar_fan" (a digit or "_" ends a word). It costs the person what they see, never
+  their data. What caps it: "Not about GTA" (per page and word), "Show anyway", the switch
+  per site and everywhere, and removing the word in Settings. Accepted false hits (the user's choice, pinned in the tests): Post
   Malone's song, the energy drink, "a real rockstar developer". An own "Rockstar" the user had
   added becomes the built-in one, so its covers now name the word: the word is public, so this
   tells a page nothing about the user's list.
+- **"jason" and "lucia" alone built in, and the version in the menu (0.1.2, 2026-11-19, the
+  user's report and request).** The same as "Rockstar": no new input, surface or permission,
+  and the same reach (security review, 0.1.2): an email subject "Re: invoice from Jason", a
+  Gmail tab for lucia.santos@..., a chat with "Ana Lúcia" (accents fold, and Lúcia is a common
+  name in Brazil), "jason92" or "lucia_br" all match, so such a page gets the whole-page card
+  and such an account's comment covers a reel. Told to the user, who kept the names built in
+  ("they can always remove the word ... better to protect them from possible spoilers"); the
+  README's limits say how. Accepted false hits (pinned): Jason Statham, Saint Lucia, a list of
+  names. The pairs stay before them in the list. The menu shows
+  the add-on's own version from its manifest (`runtime.getManifest()`), read only by the menu,
+  which no page can reach.
 - **Step 7, signing (2026-11-19).**
   - New input: the two AMO keys, from `.env` only, read by `tools/sign_rules.mjs` (to sign) and
     the repo check (to search other files for them).

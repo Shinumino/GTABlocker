@@ -71,6 +71,22 @@ export const SHOULD_MATCH = [
   ['Jason e L\u{FA}cia', 'jason e lucia'],
   ['Luc\u{ED}a y Jason', 'lucia y jason'],
   ['Lucia & Jason', 'lucia and jason'],
+  ['#jasonandlucia', 'jason and lucia'], // letters follow "jason" there: only the pair finds it
+  // Each name alone (the user's choice, 2026-11-19, after a GTA post the pair missed).
+  ['Jason', 'jason'],
+  ['Lucia', 'lucia'],
+  ['L\u{FA}cia', 'lucia'],
+  ['Jason x Lucia', 'jason'],
+  ['Jason/Lucia', 'jason'],
+  ['Lucia, Jason', 'lucia'],
+  ['#Jason', 'jason'],
+  // Capitals mixed so that only the reading without camel-case splitting finds the GTA entry:
+  // it still wins when it starts earlier, not a later name the other reading finds (correctness
+  // review, 0.1.2: "Not about GTA" on that name would have shown a real GTA line).
+  ['RockStar Games: Jason trailer', 'rockstar games'],
+  ['gTA 6 with Jason', 'gta*'],
+  ['JaSon and Lucia', 'jason and lucia'],
+  ['Jason aNd Lucia', 'jason and lucia'],
 ];
 
 // Accepted on 2026-11-18: the list is temporary and the user chose "all of GTA" knowing these.
@@ -83,6 +99,13 @@ export const ACCEPTED_FALSE_HITS = [
   ['a real rockstar developer', 'rockstar'],
   ['Post Malone - rockstar', 'rockstar'],
   ['Rockstar Energy Drink', 'rockstar'],
+  // Accepted on 2026-11-19 with "jason" and "lucia" alone (the user's choice): a list of names
+  // is still not the pair, but either name now counts on its own.
+  ['Jason Statham', 'jason'],
+  ['Saint Lucia', 'lucia'],
+  ['Jason Statham and Lucia', 'jason'],
+  ['Thanks to Jason, Lucia and Pedro', 'jason'],
+  ['Jason. Lucia said', 'jason'],
 ];
 
 export const SHOULD_NOT_MATCH = [
@@ -90,13 +113,8 @@ export const SHOULD_NOT_MATCH = [
   ['the rockstars of jazz', null], // a whole word only
   ['grand theft', null],
   ['auto theft is up', null],
-  ['Jason', null],
-  ['Lucia', null],
-  ['Jason Statham and Lucia', null],
-  // A list of names is not the pair (user's choice, 2026-11-18).
-  ['Thanks to Jason, Lucia and Pedro', null],
-  ['Jason/Lucia', null],
-  ['Jason. Lucia said', null],
+  ['Luciana', null], // a whole word only
+  ['the Jasons', null],
   ['Leonidas, king of Sparta', null],
   ['Carlos Santos', null],
   ['carlossantos', null],

@@ -10,10 +10,14 @@
 // - "Not about GTA" reaches every frame of the tab, and lifts the whole-page cover too;
 // - a Show anyway pressed on the button outlives the Undo of another word;
 // - the menu's Settings button opens the settings page;
-// - off is a real stop: content added after it is not covered, no attribute of ours is left.
+// - off is a real stop: content added after it is not covered, no attribute of ours is left;
+// - and (the user's request, 2026-11-19) the menu shows the add-on's version, small, at the
+//   bottom-right, on the row of its buttons.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { useFirefox, EXTENSION_DIR } from '../support/browser-test.mjs';
 import { ADDON_PREFS, MENU_URL, SETTINGS_URL, openMenu, menuKeys, waitForBadge, openPage, openSettings, backToTab } from '../support/toolbar.mjs';
 
@@ -134,6 +138,45 @@ test("the menu's Settings button opens the settings page", async () => {
   await firefox.waitForPage('the settings page', `return location.href === ${JSON.stringify(SETTINGS_URL)}`);
   await firefox.marionette.send('WebDriver:CloseWindow');
   await firefox.marionette.send('WebDriver:SwitchToWindow', { handle: here });
+});
+
+test("the menu shows the add-on's version, small, at the bottom-right on the row of its buttons", async () => {
+  const { firefox } = session;
+  const want = JSON.parse(fs.readFileSync(path.join(EXTENSION_DIR, 'manifest.json'), 'utf8')).version;
+  await open('switch.test', 'index.html');
+  const back = await openPage(firefox, MENU_URL);
+  try {
+    await firefox.waitForPage('the menu drawn', "return document.title === 'GTA Blocker menu' && document.querySelector('.pfoot')");
+    // The menu in a tab is the popup's 340 px, but it has no "Report missed GTA" (its tab is an
+    // add-on page). On a web page the row holds both buttons and the version, so the test puts
+    // the button in as the menu draws it, and measures that row (test review, 0.1.2).
+    const got = await firefox.evaluate(`
+      const foot = document.querySelector('.pfoot');
+      const ver = foot.querySelector('.ver');
+      const button = foot.querySelector('[data-act="settings"]');
+      if (!ver) return null;
+      const report = document.createElement('button');
+      report.type = 'button';
+      report.className = 'btn';
+      report.textContent = 'Report missed GTA';
+      foot.insertBefore(report, foot.firstChild);
+      const grey = document.createElement('span');
+      grey.style.color = 'var(--muted)';
+      foot.appendChild(grey);
+      const muted = getComputedStyle(grey).color;
+      grey.remove();
+      const f = foot.getBoundingClientRect(), v = ver.getBoundingClientRect(), b = button.getBoundingClientRect(), r = report.getBoundingClientRect();
+      return {
+        text: ver.textContent, last: foot.lastElementChild === ver,
+        right: Math.round(f.right - parseFloat(getComputedStyle(foot).paddingRight) - v.right),
+        sameRow: v.top < b.bottom && v.bottom > b.top && v.top < r.bottom && v.bottom > r.top,
+        smaller: parseFloat(getComputedStyle(ver).fontSize) < parseFloat(getComputedStyle(button).fontSize),
+        grey: getComputedStyle(ver).color === muted,
+      };`);
+    assert.deepEqual(got, { text: want, last: true, right: 0, sameRow: true, smaller: true, grey: true });
+  } finally {
+    await backToTab(firefox, back);
+  }
 });
 
 test('off is a real stop: content added after it is not covered, and nothing of ours is left on the page', async () => {

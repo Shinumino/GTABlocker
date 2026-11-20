@@ -6,7 +6,7 @@
 // gives web pages no way to message an extension).
 (function () {
   'use strict';
-  const { tabs: T } = GtaBlocker;
+  const { tabs: T, settings: S } = GtaBlocker;
   const KEY = 'tabs';
 
   const readSwitch = async () => (await browser.storage.local.get('switch')).switch;
@@ -44,6 +44,17 @@
       await paint(result.paint);
       return result;
     }).then((result) => result.reply);
+  });
+
+  // After an update, the stored words as this version reads them (settings.js foldedWords):
+  // an own word it has built in is saved as the built-in one, once. Only after an update: read
+  // at a first install too, the add-on then never covered some pages in the test Firefoxes
+  // (whole journey files, three runs in a row, 2026-11-20; with this check, all of them green),
+  // and a first install has nothing stored to change anyway.
+  browser.runtime.onInstalled.addListener(async ({ reason }) => {
+    if (reason !== 'update') return;
+    const folded = S.foldedWords((await browser.storage.local.get('words')).words);
+    if (folded) await browser.storage.local.set({ words: folded });
   });
 
   browser.tabs.onRemoved.addListener((tabId) => {

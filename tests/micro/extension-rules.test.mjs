@@ -59,6 +59,14 @@ test('the manifest asks for no permission beyond the agreed ones', () => {
   assert.deepEqual(manifest.browser_specific_settings.gecko.data_collection_permissions, { required: ['none'] });
 });
 
+test('the version in the manifest is the newest one in the changelog', () => {
+  // The menu shows the manifest's version (0.1.2): one left behind would say the wrong one
+  // (test review, 0.1.2).
+  const manifest = JSON.parse(fs.readFileSync(path.join(EXTENSION, 'manifest.json'), 'utf8'));
+  const top = fs.readFileSync(path.join(EXTENSION, '..', 'CHANGELOG.md'), 'utf8').match(/^## (\d+\.\d+\.\d+) /m);
+  assert.equal(manifest.version, top && top[1]);
+});
+
 test('the background is an event page that only loads our own files', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(EXTENSION, 'manifest.json'), 'utf8'));
   // Step 4: it sets the badge and adds up the covers each frame reports. An event page (no

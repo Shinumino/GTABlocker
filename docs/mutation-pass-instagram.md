@@ -1,4 +1,4 @@
-# Mutation pass, Instagram Reels and "Rockstar" (2026-11-19)
+# Mutation pass, Instagram Reels and the later reports (2026-11-19 and 20)
 
 Each rule was broken on purpose, one at a time, in a throwaway copy, and the tests that should
 catch it were run: the micro ones in Node, the macro ones in the installed Firefox, headless, on
@@ -153,3 +153,49 @@ built-in one (listed once, its covers name it), as typing a built-in word in alr
 | W02 | "rockstar games" comes before "rockstar" | put "rockstar" first | matcher: the default list is the one agreed on 2026-11-18 (with "rockstar"... |
 | W03 | an own word this version has built in becomes the built-in one | keep it as their own | settings-rules: an own word that a later version builds in becomes the built-in one:... |
 | W04 | such a word stays in the list even where it is stored as removed | keep it removed | settings-rules: an own word that a later version builds in becomes the built-in one:... |
+
+## 0.1.2: "jason" and "lucia" alone, the version in the menu, and the review fixes
+
+Run after the 0.1.2 reviews (docs/review-0.1.2.md), on every matching rule (S), every settings
+and menu rule (Q) and every rule from the later reports (W), with the baseline: **117 breaks,
+111 red, 6 green**; after W15 below, **112 red, 5 green by design.** An unbroken copy was green
+first.
+
+- Five are older and green by design, as their own records say: S18 (docs/mutation-pass-step2.md),
+  Q30, Q31, Q41 and Q42 (docs/mutation-pass-step4.md). Nothing about them changed.
+- **W15, "the stored words are read only after an update, never at a first install"**: green,
+  because only a micro test with a fake browser ran it, and the fake saw no difference. The
+  check was removed as unproven, and the next three full runs of the journeys failed (38, 51
+  and 44 journeys: whole files where the add-on never covered the page). Put back, they were
+  all green. Reading storage in the background at a first install breaks the add-on's first
+  pages in Firefox. The check stays, pinned by a micro test ("a first install does not even
+  read the stored words") and by the add-on-loads journey; red now. The lesson: a break whose
+  only tests use a fake browser can only show what the fake models. A new journey also proves
+  that an update (this version installed over an older one with the user's own words) covers
+  pages and saves the words (W14 red through it).
+- S08, S25 and Q08 point at the lines as they are now (find() reads both ways; compile takes a
+  limit; builtInFor and the list share one path). Each is red.
+
+| # | Rule | Break | Turned red (one of the tests) |
+|---|---|---|---|
+| W05 | "jason" and "lucia" alone are built-in words | drop them | matcher: the default list is the one agreed on 2026-11-18 (with "rockstar",... |
+| W06 | the pairs come before the single names | put the names first | matcher: the default list is the one agreed on 2026-11-18 (with "rockstar",... |
+| W07 | the menu shows the add-on's version | show nothing | toolbar-edges: the menu shows the add-on's version, small, at the bottom-right on the... |
+| W08 | the version sits at the right end of the buttons' row | right after the buttons | toolbar-edges: the menu shows the add-on's version, small, at the bottom-right on the... |
+| W09 | the version is smaller than the buttons | the buttons' size | toolbar-edges: the menu shows the add-on's version, small, at the bottom-right on the... |
+| W10 | the version is grey | the text colour | toolbar-edges: the menu shows the add-on's version, small, at the bottom-right on the... |
+| W11 | read both ways, the match that starts earlier wins | the camel-case reading first | matcher: matches rockstar games: "RockStar Games: Jason trailer" |
+| W12 | at the same start in both readings, the earlier entry wins | the later one | matcher: matches jason and lucia: "Jason aNd Lucia" |
+| W13 | the page uses every word in the stored list | only the first 200 | content-script: a full list of own words still uses every built-in word, a later... |
+| W14 | after an update the background saves the words as read | never | settings-page: updated from an earlier version that kept "Rockstar", "jason", "Lucia"... |
+| W15 | the stored words are read only after an update, never at a first install | on any install | background: a first install does not even read the stored words; extension-loads: the extension runs on a YouTube page |
+| W16 | nothing to fold is not written | write it anyway | background: an update with nothing to change, or a first install, writes nothing |
+| W17 | an own word that repeats an earlier own word goes | keep it | settings-rules: an own word that repeats another own word is listed once, the first... |
+| W18 | only an own word is ever a repeat | a built-in one too | settings-rules: a built-in list that repeats a word of its own still lets the person... |
+| W19 | Undo brings nothing back when the word is back in another spelling | bring it back | settings-rules: Undo of a removed own word does nothing when the word is back in... |
+| W20 | the Reset question puts each word in quotes | no quotes | settings-page: Reset asks first and names what goes; Escape keeps the list, "Reset... |
+| W21 | the manifest's version is the changelog's newest | leave it behind | extension-rules: the version in the manifest is the newest one in the changelog |
+| Q04 | a built-in word dropped later is forgotten, never "own" | keep any removed word | settings-rules: stored settings are read defensively: a wrong field falls back to its... |
+| Q08 | a built-in word typed back in is built-in again | never recognise it | settings-rules: a built-in word typed back in is built-in again, in its own place and... |
+| S08 | case never matters (gTA 6, YouTube) | read only the split text | matcher: matches gta*: "gTA 6" |
+| S25 | repeats and refused entries take no place | count them against the cap | matcher: the list holds 200 entries; repeats and refused entries do not take a... |

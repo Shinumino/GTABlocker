@@ -181,11 +181,48 @@ test('an own word that a later version builds in becomes the built-in one: liste
   const t = L.read({ words: { added: ['Trevor Philips'], removed: ['trevor philips', 'leonida'] } });
   assert.deepEqual([...t.added], []);
   assert.deepEqual([...t.removed], ['leonida']);
-  // The user's own case, in this version.
-  const u = S.read({ words: { added: ['Rockstar'], removed: [] } });
+  // The user's own cases, in this version: "Rockstar" (0.1.1), "jason" and "Lucia" (0.1.2).
+  const u = S.read({ words: { added: ['jason', 'Lucia', 'Rockstar'], removed: [] } });
   assert.deepEqual([...u.added], []);
-  assert.equal(list(u).filter((w) => /rockstar$/i.test(w)).length, 1, 'listed twice');
-  assert.equal(S.coverWord(u, 'rockstar'), 'rockstar');
+  for (const w of ['rockstar', 'jason', 'lucia']) {
+    assert.equal(list(u).filter((x) => x.toLowerCase() === w).length, 1, `${w} listed twice`);
+  }
+  // What a cover does: the page's matcher finds the entry, and the cover is labelled by it
+  // (test review, 0.1.2: checking the label alone could pass for the wrong reason).
+  const m = M.compile(S.entries(u));
+  for (const [text, w] of [['Rockstar trailer', 'rockstar'], ['Jason is back', 'jason'], ['L\u{FA}cia', 'lucia']]) {
+    assert.equal(S.coverWord(u, m.find(text)), w, text);
+  }
+});
+
+test('an own word is the built-in one whenever the matcher reads them as the same word', () => {
+  // Not only capitals and spaces: accents, a #, a hyphen (test review, 0.1.2). "RockStar" is
+  // read as two words, so it also finds "a rock star": another word, still the person's own.
+  const s = S.read({ words: { added: ['L\u{FA}cia', '#Rockstar', 'Vice-City', 'RockStar'] } });
+  assert.deepEqual([...s.added], ['RockStar']);
+  assert.equal(S.isOwn(s, 'RockStar'), true);
+});
+
+test('an own word that repeats another own word is listed once, the first one', () => {
+  const s = S.read({ words: { added: ['franklin', 'Franklin', 'trevor  philips', 'Trevor Philips'] } });
+  assert.deepEqual([...s.added], ['franklin', 'trevor  philips']);
+});
+
+test('a built-in list that repeats a word of its own still lets the person remove it', () => {
+  // Only a later version's list can be like this (the real one is checked in matcher.test.mjs).
+  const D = S.withDefaults(['vice city', 'Vice City', 'leonida']);
+  assert.deepEqual([...D.read({ words: { removed: ['vice city'] } }).removed], ['vice city']);
+});
+
+test('Undo of a removed own word does nothing when the word is back in another spelling', () => {
+  // Remove "Jason Statham", type "jason statham", then Undo: it was listed twice (correctness
+  // review, 0.1.2).
+  let s = add(fresh(), 'Jason Statham');
+  const at = s.added.indexOf('Jason Statham');
+  s = S.removeWord(s, 'Jason Statham');
+  s = add(s, 'jason statham');
+  s = S.restoreWord(s, 'Jason Statham', at);
+  assert.deepEqual([...s.added], ['jason statham']);
 });
 
 test('Undo of a removal puts back only that word, where it was', () => {

@@ -31,9 +31,12 @@
     return reportRows(reports, timeZone).map((r) => `${r.when}  ${r.kind}  ${r.note ? `${r.note}  ` : ''}${r.page}`).join('\n');
   }
 
+  // Each word in quotes: an entry's own "and" ("jason and lucia") ran into the list's (design
+  // review, 0.1.2).
   function listShort(items) {
-    if (items.length <= 4) return items.join(', ');
-    return `${items.slice(0, 3).join(', ')} and ${items.length - 3} more`;
+    const quoted = items.map((w) => `"${w}"`);
+    if (quoted.length <= 4) return quoted.join(', ');
+    return `${quoted.slice(0, 3).join(', ')} and ${quoted.length - 3} more`;
   }
 
   // What Reset would do, in one sentence, or null when the list is already the built-in one.

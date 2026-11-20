@@ -35,13 +35,19 @@
   // fault, and "los santos" in ordinary Spanish. "Jason & Lucia" is covered by the "and" forms.
   // "rockstar" alone since 2026-11-19 (a GTA Short said only "Rockstar" and played; the user's
   // choice, knowing it also covers Post Malone's song, the energy drink and "a real rockstar").
-  // "rockstar games" stays before it: it alone finds "rockstargames", and where both match, the
-  // earlier entry is the one a cover names.
+  // "jason" and "lucia" alone since 2026-11-19 too (the user added both after a GTA post the
+  // pairs missed, then chose to build them in, knowing they cover anyone named Jason or Lucia,
+  // Saint Lucia and a list of names, and that a page title with either brings the whole-page
+  // card: "they can always remove the word"). The longer entries stay in the list, because only
+  // they find "rockstargames" and "#jasonandlucia", and removing a name brings back the old,
+  // narrower rule. They come first, so where both match at the same place a cover names the
+  // longer one (matcher.test.mjs checks the order as a rule).
   const DEFAULT_ENTRIES = Object.freeze([
     'gta*', 'grand theft auto', 'rockstar games', 'rockstar', 'vice city', 'leonida', 'los santos',
     'liberty city', 'san andreas',
     'jason and lucia', 'jason e lucia', 'jason y lucia',
     'lucia and jason', 'lucia e jason', 'lucia y jason',
+    'jason', 'lucia',
   ]);
 
   // Caps for a list the user types: an entry under 3 letters ("a*") would cover almost every
@@ -159,7 +165,11 @@
   // or null. When two could match, the one that starts earlier in the text wins, then the one
   // earlier in the list. rejected lists every refused entry: { index, entry, code, reason },
   // plus sameAs (the index of the entry it repeats) for a duplicate. Blank lines are skipped.
-  function compile(entries) {
+  // limit is how many entries it takes: LIMITS.maxEntries for a list being typed; the page
+  // passes its whole stored list, where each word met the cap when it was added, and a
+  // built-in word a later version adds must still count (it went "list-full" on a full list:
+  // correctness and security review, 0.1.2).
+  function compile(entries, { limit = LIMITS.maxEntries } = {}) {
     const accepted = [];
     const rejected = [];
     const seen = new Map();
@@ -169,7 +179,7 @@
       if (parsed.blank) return;
       let code = parsed.code;
       if (!code && seen.has(parsed.key)) code = 'duplicate';
-      if (!code && accepted.length >= LIMITS.maxEntries) code = 'list-full';
+      if (!code && accepted.length >= limit) code = 'list-full';
       if (code) {
         const refusal = { index, entry, code, reason: REASONS[code] };
         if (code === 'duplicate') refusal.sameAs = seen.get(parsed.key);
@@ -182,13 +192,14 @@
     // One pattern for the whole list, so a text is read once, not once per entry.
     const combined = accepted.length === 0 ? null
       : new RegExp(accepted.map((a) => `(${a.pattern})`).join('|'), 'u');
+    // The first match in one reading: where it starts, counted in letters and digits (the two
+    // readings differ only in their gaps), and its entry's place in the list.
     const first = (text) => {
       const match = combined.exec(text);
       if (!match) return null;
-      for (let i = 1; i < match.length; i++) {
-        if (match[i] !== undefined) return accepted[i - 1].entry;
-      }
-      return null;
+      let i = 1;
+      while (match[i] === undefined) i++;
+      return { at: (text.slice(0, match.index).match(LETTERS) || []).length, index: i - 1 };
     };
     return Object.freeze({
       entries: Object.freeze(accepted.map((a) => a.entry)),
@@ -196,10 +207,14 @@
       find(text) {
         if (!combined) return null;
         const split = prepare(text, true);
-        const found = first(split);
-        if (found !== null) return found;
         const whole = prepare(text, false);
-        return whole === split ? null : first(whole);
+        const a = first(split);
+        const b = whole === split ? null : first(whole);
+        // Read both ways, the match that starts earlier wins, then the one earlier in the list:
+        // reading with camel case split first, a later "jason" was named over "RockStar Games"
+        // (correctness review, 0.1.2).
+        const won = !b || (a && (a.at < b.at || (a.at === b.at && a.index <= b.index))) ? a : b;
+        return won ? accepted[won.index].entry : null;
       },
     });
   }

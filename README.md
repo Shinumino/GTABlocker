@@ -7,7 +7,7 @@ page is removed, so sites keep working, and a cover cannot be clicked by acciden
 
 - **The words it knows:** any word starting with GTA (GTA 6, GTA V, GTA Online), Grand Theft
   Auto, Rockstar Games, Rockstar, Vice City, Leonida, Los Santos, Liberty City, San Andreas,
-  and "Jason and Lucia" as a pair. Capitals, accents and spacing do not matter (#ViceCity
+  Jason, Lucia (each name on its own). Capitals, accents and spacing do not matter (#ViceCity
   counts). You can add and remove words in Settings.
 - **YouTube Shorts and Instagram Reels:** a Short or reel about GTA is covered, paused and
   muted; one that is not plays as usual.
@@ -33,14 +33,17 @@ install each new release the same way. Your words and settings stay.
 - On Instagram, the feed, Explore and Stories are covered by their text only so far, so a GTA
   video there can still play.
 - Some covers are not about the game: GTA as the Greater Toronto Area, the San Andreas fault,
-  "los santos" in Spanish, Post Malone's "rockstar". "Not about GTA" shows them again.
+  "los santos" in Spanish, Post Malone's "rockstar", anyone named Jason or Lucia. A page whose
+  title has one of them, like an email from a Jason, gets the whole-page card. "Not about GTA"
+  or "Show anyway" shows them again, and Settings removes any word you do not want, built-in
+  ones too (Reset brings them back).
 - Phone apps cannot be reached by any add-on.
 
 ## Report a problem
 
-Open an issue with the page's address and what you saw. In the add-on, "Report missed GTA" and
-"Not about GTA" keep a note in Settings, on your computer only: you can copy them from there
-into the issue.
+Open an issue with the page's address, what you saw, and the add-on's version (the small
+number at the bottom-right of its menu). In the add-on, "Report missed GTA" and "Not about GTA"
+keep a note in Settings, on your computer only: you can copy them from there into the issue.
 
 ## Build and test (Windows)
 

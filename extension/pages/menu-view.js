@@ -1,6 +1,7 @@
-// What the toolbar menu shows, decided from { settings, url, covers, done }: the settings, the
-// page's address, the page's covers by word (from the background, through keep()), and what
-// the person did in this menu ({ entry: 'shown' | 'removed' }). Plain logic, so the rules are
+// What the toolbar menu shows, decided from { settings, url, covers, done, version }: the
+// settings, the page's address, the page's covers by word (from the background, through
+// keep()), what the person did in this menu ({ entry: 'shown' | 'removed' }), and the add-on's
+// version. Plain logic, so the rules are
 // tested apart from drawing them (tests/micro/menu-view.test.mjs); the look and the words were
 // agreed in docs/design/menu-preview.html (2026-11-18).
 (function (root) {
@@ -11,10 +12,13 @@
   // Firefox's own pages and the add-on's pages: no content script runs there.
   const FIREFOX_PAGE = /^(about|moz-extension|view-source|chrome|resource):/i;
 
-  function view({ settings, url, covers, done }) {
+  // version: the add-on's own, from its manifest, shown small in a corner of the menu (the
+  // user's request, 2026-11-19); anything but text leaves the corner empty.
+  function view({ settings, url, covers, done, version }) {
     const site = S.siteKey(url);
     const state = S.coverState(settings, site);
     const out = { site, rows: [], state: null, note: null, count: null, groups: [], hint: false, miss: false };
+    out.version = typeof version === 'string' && version.trim() ? version.trim() : null;
 
     // While Everywhere is off the site row is hidden: a switch that does nothing is a dead
     // control above the one that matters (design review, 2026-11-18).

@@ -16,15 +16,17 @@ const { matcher } = loadExtensionScripts({ until: 'lib/matcher.js' }).GtaBlocker
 const defaults = matcher.compile(matcher.DEFAULT_ENTRIES);
 const codes = (m) => plain(m.rejected.map((r) => r.code));
 
-test('the default list is the one agreed on 2026-11-18 (with "rockstar" alone, 2026-11-19), and every entry of it is used', () => {
+test('the default list is the one agreed on 2026-11-18 (with "rockstar", "jason" and "lucia" alone, 2026-11-19), and every entry of it is used', () => {
   // "rockstar" alone: a GTA Short said only "Rockstar" and played (the user's report and
-  // choice, 2026-11-19). "rockstar games" stays before it: it alone finds "rockstargames", and
-  // where both match, the earlier entry in the list is the one named.
+  // choice, 2026-11-19). "jason" and "lucia" alone: the user added both after a miss, then chose
+  // to build them in. The longer entries stay, because only they find "rockstargames" and
+  // "#jasonandlucia"; they come first, so a cover names them (the next test).
   assert.deepEqual(plain(matcher.DEFAULT_ENTRIES), [
     'gta*', 'grand theft auto', 'rockstar games', 'rockstar', 'vice city', 'leonida', 'los santos',
     'liberty city', 'san andreas',
     'jason and lucia', 'jason e lucia', 'jason y lucia',
     'lucia and jason', 'lucia e jason', 'lucia y jason',
+    'jason', 'lucia',
   ]);
   // No entry was refused or folded into another as a duplicate.
   assert.deepEqual(plain(defaults.entries), plain(matcher.DEFAULT_ENTRIES));
@@ -50,6 +52,20 @@ for (const [text, expected] of NORMALIZE_CASES) {
     assert.equal(matcher.normalize(text), expected);
   });
 }
+
+test('a built-in entry found inside a longer one comes after it, so a cover names the longer one', () => {
+  // Where both match at the same place, the earlier entry is the one named ("Rockstar Games",
+  // not "rockstar"; "Jason and Lucia", not "jason"). Written as a rule, so a new entry cannot
+  // break it unseen (design review, 0.1.2).
+  const list = [...matcher.DEFAULT_ENTRIES];
+  for (const [i, long] of list.entries()) {
+    for (const [j, short] of list.entries()) {
+      if (i !== j && matcher.compile([short]).find(long.replace('*', '')) !== null) {
+        assert.ok(i < j, `"${long}" must come before "${short}"`);
+      }
+    }
+  }
+});
 
 test('every invisible character is removed, wherever it sits in a word', () => {
   const missed = [];

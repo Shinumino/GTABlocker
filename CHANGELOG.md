@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.2 (19 Nov 2026)
+
+Install it the same way as before (about:addons, the gear icon, "Install Add-on From File..."):
+it replaces 0.1.1, and your words and settings stay.
+
+- **"Jason" and "Lucia" on their own now count as GTA** (you had to add them to your list: only
+  the two together, like "Jason and Lucia", counted). They also cover anyone else with those
+  names, like the actor Jason Statham or Ana Lúcia, the country Saint Lucia, and a list of names
+  like "Jason, Lucia and Pedro" (0.1.0 said it did not count). A longer name, like "Luciana",
+  does not count.
+  - A page whose title has either name gets the whole-page "This page is about GTA" card: an
+    email from a Jason, a chat with a Lúcia. "Show anyway" opens it for that visit, and you can
+    remove either word in Settings with its bin button (Reset brings it back).
+  - You added "jason" and "Lucia" to your own list: they become the built-in words. In Settings
+    they are tagged "built-in" instead of "yours", their covers say "(matched: jason)" or
+    "(matched: lucia)", and the toolbar menu offers "Not about GTA" for them instead of "Remove
+    from my list".
+- **The toolbar menu shows the add-on's version** (0.1.2), small and grey, at the bottom-right
+  next to Settings.
+- **Fixed:**
+  - A line with odd capitals, like "RockStar Games: Jason trailer", was named after "jason";
+    it is now named after "rockstar games", the word that starts first.
+  - On a list of almost 200 words, a built-in word added by an update was silently left out.
+  - Undo after removing one of your words could list it twice, if you had typed it again in
+    other capitals.
+  - The Reset question puts each word in quotes.
+
 ## 0.1.1 (19 Nov 2026)
 
 Install it the same way as 0.1.0 (about:addons, the gear icon, "Install Add-on From File..."):
@@ -30,8 +57,9 @@ it replaces 0.1.0, and your words and settings stay.
   played: only "Rockstar Games" counted). It also covers things that are not the game:
   Post Malone's song "rockstar", the Rockstar Energy drink, and lines like "a real rockstar
   developer". "Rock star" as two words, and "rockstars", do not count.
-  - You added "Rockstar" to your own list: it becomes the built-in word, so the list shows it
-    once, and its covers say "(matched: rockstar)" instead of "a word from your list".
+  - You added "Rockstar" to your own list: it becomes the built-in word. In Settings it is
+    tagged "built-in" instead of "yours", and its covers say "(matched: rockstar)" instead of
+    "(matched: a word from your list)".
 
 ## 0.1.0 (19 Nov 2026)
 

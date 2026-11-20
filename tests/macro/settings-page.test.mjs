@@ -16,6 +16,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { useFirefox, EXTENSION_DIR } from '../support/browser-test.mjs';
 import { ADDON_PREFS, SETTINGS_URL, openMenu, menuKeys, openSettings, backToTab } from '../support/toolbar.mjs';
 
@@ -60,10 +63,10 @@ async function fresh() {
   const { firefox } = session;
   await inSettings(async () => {
     // Reset whenever the list is not exactly the built-in one (a count alone is not enough: one
-    // word added and one removed is 15 too).
+    // word added and one removed is 17 too).
     await click('#reset');
     if (await firefox.evaluate("return document.getElementById('ask').open")) await click('#ask-yes');
-    await firefox.waitForPage('the built-in list', "return document.getElementById('n-words').textContent === '(15 of 200)' && !document.querySelector('.wlist .tag.yours')");
+    await firefox.waitForPage('the built-in list', "return document.getElementById('n-words').textContent === '(17 of 200)' && !document.querySelector('.wlist .tag.yours')");
     if (await firefox.evaluate("return Boolean(document.getElementById('clear'))")) {
       await click('#clear');
       await click('#ask-yes');
@@ -79,6 +82,63 @@ async function addWord(word) {
   await type('#add-input', `${word}\u{E007}`);
   await waitText('#word-msg', `Added "${word}".`);
 }
+
+test('own words that this version builds in (the user\u{2019}s "Rockstar", "jason", "Lucia") are listed once, as built-in, and a cover names them', async () => {
+  // The user's own stored words after updating (test review, 0.1.2): every surface reads them
+  // through settings.js read(), and none may list one twice or label its covers as the person's.
+  const { firefox } = session;
+  await fresh();
+  await open('switch.test', 'index.html');
+  await inSettings(async () => {
+    await firefox.marionette.send('WebDriver:ExecuteAsyncScript', { script: "const done = arguments[arguments.length - 1]; browser.storage.local.set({ words: { added: ['Rockstar', 'jason', 'Lucia'], removed: [] } }).then(() => done(true));", args: [] });
+    await firefox.navigate(SETTINGS_URL);
+    await firefox.waitForPage('the settings page again', "return document.documentElement.hasAttribute('data-ready')");
+    const rows = await firefox.evaluate("return [...document.querySelectorAll('.wlist li')].map((li) => [li.querySelector('.w').firstChild.textContent, li.querySelector('.tag').textContent])");
+    for (const w of ['rockstar', 'jason', 'lucia']) assert.deepEqual(rows.filter(([word]) => word.toLowerCase() === w), [[w, 'built-in']], w);
+    assert.equal(await text('#n-words'), '(17 of 200)');
+  });
+  await firefox.evaluate("const p = document.createElement('p'); p.id = 'x-jason'; p.textContent = 'Jason is back'; document.body.appendChild(p);");
+  await firefox.waitForPage('the line covered, naming its word', "return document.getElementById('x-jason').getAttribute('data-gta-word') === 'jason'");
+  await fresh();
+});
+
+// What browser.storage.local holds, read and written in the add-on's own settings tab (a web
+// page cannot reach it). Inside inSettings.
+const storedWords = async () => JSON.parse(value(await session.firefox.marionette.send('WebDriver:ExecuteAsyncScript', { script: "const done = arguments[arguments.length - 1]; browser.storage.local.get('words').then((w) => done(JSON.stringify(w.words ?? null)));", args: [] })));
+const storeWords = (words) => session.firefox.marionette.send('WebDriver:ExecuteAsyncScript', { script: `const done = arguments[arguments.length - 1]; browser.storage.local.set({ words: ${JSON.stringify(words)} }).then(() => done(true));`, args: [] });
+
+test('updated from an earlier version that kept "Rockstar", "jason", "Lucia" as own words: pages are covered, and the words are saved as built-in', async () => {
+  // The user's own next update (0.1.2 over 0.1.1, 2026-11-20). After an update the background
+  // reads and saves the words; read at a first install, the add-on never covered some pages,
+  // so this proves the update itself covers pages. The earlier version here is this one with a
+  // lower version number, installed over it first (not removed: Firefox would forget the
+  // add-on's fixed address, which this file needs).
+  const { firefox } = session;
+  await fresh();
+  const older = fs.mkdtempSync(path.join(os.tmpdir(), 'gtab-older-'));
+  try {
+    fs.cpSync(EXTENSION_DIR, older, { recursive: true });
+    const manifest = JSON.parse(fs.readFileSync(path.join(older, 'manifest.json'), 'utf8'));
+    fs.writeFileSync(path.join(older, 'manifest.json'), JSON.stringify({ ...manifest, version: '0.0.1' }, null, 2));
+    await firefox.installExtension(older);
+    await open('switch.test', 'index.html');
+    await inSettings(() => storeWords({ added: ['Rockstar', 'jason', 'Lucia'], removed: [] }));
+    await firefox.evaluate("document.documentElement.removeAttribute('data-gta-blocker')");
+    await firefox.installExtension(EXTENSION_DIR);
+    await firefox.waitForPage('the updated copy to finish its first look', "return document.documentElement.getAttribute('data-gta-blocker') === 'ready'", { timeoutMs: 10_000 });
+    await waitCovered(['v-gta', 'v-online', 'v-vice']);
+    let words = null;
+    for (const end = Date.now() + 5000; Date.now() < end;) {
+      words = await inSettings(storedWords);
+      if (words && words.added.length === 0) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    assert.deepEqual(words, { added: [], removed: [] }, 'the own words were not saved as built-in');
+  } finally {
+    fs.rmSync(older, { recursive: true, force: true });
+  }
+  await fresh();
+});
 
 test('a refused word says why and keeps what was typed; an added one is first, and an open page covers it at once', async () => {
   const { firefox } = session;
@@ -96,7 +156,7 @@ test('a refused word says why and keeps what was typed; an added one is first, a
     await addWord('cucumber');
     assert.equal((await words())[0], 'cucumber');
     assert.equal(await text('.wlist li:first-child .tag'), 'yours');
-    assert.equal(await text('#n-words'), '(16 of 200)');
+    assert.equal(await text('#n-words'), '(18 of 200)');
   });
   await waitCovered(['v-cat', 'v-gta', 'v-online', 'v-vice']);
   assert.equal(await firefox.evaluate("return document.getElementById('v-cat').getAttribute('data-gta-word')"), 'a word from your list');
@@ -142,17 +202,17 @@ test('Reset asks first and names what goes; Escape keeps the list, "Reset the li
     await waitText('#word-msg', 'Removed "vice city". Undo');
     await click('#reset');
     assert.equal(await firefox.evaluate("return document.getElementById('ask').open"), true);
-    assert.equal(await text('#ask-p'), 'Your 1 own word goes (cucumber), and the 1 built-in word you removed comes back (vice city).');
+    assert.equal(await text('#ask-p'), 'Your 1 own word goes ("cucumber"), and the 1 built-in word you removed comes back ("vice city").');
     assert.equal(await firefox.evaluate("return document.activeElement.id"), 'ask-no', 'the safe button has the focus');
     await firefox.press('Escape');
   });
   // Read again from what is stored: Escape changed nothing.
   await inSettings(async () => {
     assert.ok((await words()).includes('cucumber'));
-    assert.equal(await text('#n-words'), '(15 of 200)');
+    assert.equal(await text('#n-words'), '(17 of 200)');
     await click('#reset');
     await click('#ask-yes');
-    await waitText('#n-words', '(15 of 200)');
+    await waitText('#n-words', '(17 of 200)');
     await waitText('#word-msg', 'Back to the built-in words.');
     assert.ok(!(await words()).includes('cucumber'));
   });

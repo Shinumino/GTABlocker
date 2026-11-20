@@ -34,9 +34,12 @@ test('the Reset box names what goes and what comes back, and shortens a long lis
   let s = S.removeWord(S.read(undefined), 'los santos');
   s = S.addWord(s, 'trevor philips').settings;
   s = S.addWord(s, 'michael de santa').settings;
-  assert.equal(V.resetText(s), 'Your 2 own words go (michael de santa, trevor philips), and the 1 built-in word you removed comes back (los santos).');
+  assert.equal(V.resetText(s), 'Your 2 own words go ("michael de santa", "trevor philips"), and the 1 built-in word you removed comes back ("los santos").');
   for (const w of ['aaa', 'bbb', 'ccc']) s = S.addWord(s, w).settings;
-  assert.match(V.resetText(s), /^Your 5 own words go \(ccc, bbb, aaa and 2 more\)/);
-  assert.equal(V.resetText(S.addWord(S.read(undefined), 'trevor philips').settings), 'Your 1 own word goes (trevor philips).');
+  assert.match(V.resetText(s), /^Your 5 own words go \("ccc", "bbb", "aaa" and 2 more\)/);
+  assert.equal(V.resetText(S.addWord(S.read(undefined), 'trevor philips').settings), 'Your 1 own word goes ("trevor philips").');
+  // In quotes, an entry's own "and" cannot run into the list's (design review, 0.1.2).
+  const many = ['jason and lucia', 'jason e lucia', 'jason y lucia', 'lucia and jason', 'lucia e jason'].reduce((t, w) => S.removeWord(t, w), S.read(undefined));
+  assert.equal(V.resetText(many), 'The 5 built-in words you removed come back ("jason and lucia", "jason e lucia", "jason y lucia" and 2 more).');
   assert.equal(V.resetText(S.read(undefined)), null, 'nothing to reset');
 });
